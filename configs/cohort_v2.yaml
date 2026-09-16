@@ -12,12 +12,21 @@
 
 config_version: cohort_v2
 scope: >-
-  The ten frozen 2025 releases, the four declared Kalshi policy series, and the
-  pre-event rule that decides which contracts each release is measured against.
+  Two release arms, never pooled: the ten frozen 2025 releases (`core_2025h1`, the
+  retrospective arm every existing result is measured on) and the prospective arm
+  (`forward_2026h2`) declared in `configs/cohort_forward.yaml`. Beside them, the four
+  declared Kalshi policy series and the pre-event rule that decides which contracts
+  each release of either arm is measured against.
 
 releases:
   # The release cohort is the v1 cohort, unchanged. It is named here rather than
   # copied so the two cannot drift apart, and so a v2 run cannot quietly reselect it.
+  #
+  # This is the retrospective arm. It stays the cohort every existing result is
+  # measured on, and it stays reported as blocked for want of rule-vintage evidence.
+  # The prospective arm is declared beside it in `arms:` below and is never pooled
+  # with it.
+  arm: retrospective
   file: configs/cohort.yaml
   cohort_id: core_2025h1
   event_count: 10
@@ -25,6 +34,73 @@ releases:
     cpi: 5
     employment: 5
   selected_without_reference_to_outcomes: true
+
+arms:
+  # The study has two arms, and they are declared here so that neither can be read
+  # as the other. Each arm is named by file and is never copied into this one, so a
+  # run cannot reselect either arm, and a reader can tell which arm a result belongs
+  # to from the cohort id alone.
+  #
+  # They are not versions of one arm and they are not a time split of one sample.
+  # They differ in what can be certified about them: a rule capture records the
+  # instant the serving system states, and an interval that opens at that instant
+  # cannot certify a window that closed before it. The retrospective arm's windows
+  # all closed before any capture exists, which is why that arm is blocked and why
+  # the forward arm exists.
+  pooling_permitted: false
+  events_are_never_merged: true
+  event_ids_are_namespaced_by_year: true
+  a_result_names_its_arm: true
+  members:
+    - arm: retrospective
+      file: configs/cohort.yaml
+      cohort_id: core_2025h1
+      role: the_frozen_2025_cohort
+      event_count: 10
+      event_id_prefixes:
+        - cpi_2025_
+        - empsit_2025_
+      rule_vintage_certifiable: false
+      status: blocked_pending_rule_vintage_evidence
+      status_is_reported_not_inferred: true
+      why: >-
+        every candidate contract's window closed before any dated rule capture exists,
+        so no attested rule record can be in force across it and the primary graph
+        refuses every edge. This arm is retained and reported as blocked; it is never
+        deleted and never rewritten. See `rule_vintage` below.
+    - arm: forward
+      file: configs/cohort_forward.yaml
+      cohort_id: forward_2026h2
+      role: the_prospective_arm_extended_by_a_declared_calendar_rule
+      event_count: 6
+      event_count_is_a_snapshot: true
+      event_id_prefixes:
+        - cpi_2026_
+        - empsit_2026_
+      extension_rule: next_scheduled_release_per_family
+      extension_rule_authority: configs/cohort_forward.yaml
+      rule_vintage_certifiable: true
+      status: declared_pending_each_release_publishing
+      status_is_reported_not_inferred: true
+      why: >-
+        its releases are in the future, so a capture taken before each one can open its
+        interval before the window it certifies. Nothing about outcome, activity or
+        contract liveness selects its membership; the rule and its peeking hazard are
+        stated in `configs/cohort_forward.yaml` and in
+        `reports/preregistration_v2.md`.
+      not_in_any_current_result: true
+      not_in_any_current_result_meaning: >-
+        no release in this arm has published, and no release row exists for one, so no
+        panel, graph, forecast or estimate in this repository contains a row from it.
+  # What each arm may not be used for, stated so a reader does not have to infer it.
+  cross_arm_uses_forbidden:
+    - pooling the two arms into one estimate or one denominator
+    - using the forward arm to add releases to the retrospective arm's sample
+    - reading an unblocked forward arm as unblocking the retrospective arm's claim
+    - reporting a forward-arm result as the retrospective arm's result, or the reverse
+  cross_arm_denominator_rule: >-
+    each arm is its own denominator. An arm's declared grid is reported with that arm's
+    cohort id, and a pooled count is reported as an error rather than as a total.
 
 # The declared policy series. `series_of` reads the leading alphabetic run of a
 # ticker, so a series name is matched exactly and a substring match on a ticker that

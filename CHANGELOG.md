@@ -44,6 +44,33 @@ cannot support.
   serving system states, so the observation has to be taken ahead of the window it is
   used on. Nothing in this repository installs the file.
 
+- **Forward cohort arm** — `configs/cohort_forward.yaml` (`forward_2026h2`) and the
+  `arms:` block naming both arms in `configs/cohort_v2.yaml`. The arm is the next three
+  scheduled CPI and next three Employment Situation releases, October through December
+  2026, at the instants the BLS calendars state. The retrospective arm
+  (`core_2025h1`, `configs/cohort.yaml`) is untouched and stays the arm reported as
+  blocked; `pooling_permitted: false`, four named forbidden cross-arm uses, and a
+  per-arm denominator keep a result from being read against the wrong arm.
+  - The arm is extended by a declared rule, not declared complete, because the BLS
+    schedule runs about three months ahead. `extension_rule` names the authority (the
+    BLS schedules only), the append step (the family's earliest not-yet-declared
+    release), the cadence (before each release instant) and the hazard: appending after
+    an outcome is known, or letting anything about a contract's liveness or trading
+    decide membership, would select the arm on its own results. Membership is fixed by
+    a calendar this repository does not write.
+  - `no_post_publication_addition_or_removal` records that a release which contributes
+    no row stays in the arm and is reported with its reason, so a denominator cannot be
+    trimmed after the fact.
+- **Release-page capture** — `scripts/capture_bls_releases.py`, 8 tests. It writes the
+  receipt `import_bls_archives.py` reads, but only for a page that is a complete
+  published release: it requires a complete document and a plausible size, then runs
+  the importer's own parser and requires both first-release values and agreement
+  between the page's own embargo line and the declared calendar. `status_basis` and
+  `payload_evidence` record what was actually observed, so this receipt is
+  distinguishable from one written beside a real status line. It refuses the sealed
+  2025 capture directory, refuses to overwrite a capture, and refuses an event with no
+  declared archive URL.
+
 ### Fixed
 
 - **The observation run closed itself.** The run was grouped on the digest of the
@@ -82,6 +109,20 @@ cannot support.
   date, position terms and expiration time while stating no effective date of its own.
   A product-template document is versionless, which is why `must_name_the_contract`
   carries the whole weight here and is not relaxed.
+- **The capture chain reproduces a sealed row.** A page for `cpi_2025_01` captured
+  fresh through a browser on 2026-09-17, put through `capture_bls_releases.py` and then
+  `import_bls_archives.py`, parsed to the **same six values** and the **same
+  `raw_hash` (`6e90f322…`)** as the row already sealed for that event. The chain that
+  the forward arm depends on was therefore verified against an existing artifact rather
+  than only exercised.
+- **The archive pages are not reachable by direct HTTP from this checkout.** Every
+  header set tried returns `403` — this repository's research user agent, a current
+  browser user agent, with and without `Accept`/`Accept-Language`, and with no user
+  agent at all — while a browser session returns `200` with the full page. That is why
+  the sealed 2025 receipts carry `acquisition_method: standard_browser_http_response`
+  and the capture directory is named `bls-browser`, and why the capture script has no
+  direct-fetch mode: a mode that returned 403 would invite a reader to think the source
+  refused rather than the client being unable to ask.
 - **Test suite.** 1076 → **1084** tests. `ruff check` and `ruff format --check` clean.
 
 ### Not established

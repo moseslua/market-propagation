@@ -22,6 +22,57 @@ title: Cross-meeting propagation into same-strike later policy-rate contracts
 # not the trading session and not a thin sample: 623 edges are structurally
 # admissible and every one is withheld by the rule-vintage requirement alone.
 
+cohort_arms:
+  # This is the study the two arms matter most to, and every measured count in this
+  # file is a count on the retrospective arm. The arms are declared and named in
+  # `configs/cohort_v2.yaml`; they are named here rather than copied. Nothing in this
+  # block changes a claim the retrospective arm already makes.
+  authority: configs/cohort_v2.yaml
+  arms_are_never_pooled: true
+  why_the_two_arms_differ_here: >-
+    this study's binding requirement is a rule version verified in force across the
+    measured interval. A rule capture opens its interval at the instant the serving
+    system states, so it can certify a window that begins after the capture and cannot
+    certify one that ended before it. Every retrospective window ended before any
+    capture exists, which is why that arm is blocked; every forward window begins after
+    a capture can be taken, which is why that arm is not blocked on this requirement.
+  retrospective:
+    file: configs/cohort.yaml
+    cohort_id: core_2025h1
+    relation_to_this_study: the_arm_this_study_is_measured_on
+    status: blocked_no_admissible_donor_under_the_declared_rule_vintage_requirement
+    status_source: the status block above, which this block does not alter
+    measured_edges_admitted: 0
+    this_arm_remains_the_reported_blocked_arm: true
+  forward:
+    file: configs/cohort_forward.yaml
+    cohort_id: forward_2026h2
+    relation_to_this_study: >-
+      the arm whose windows a dated capture taken before each release instant can
+      actually certify, and therefore the only arm on which this study's primary claim
+      is creditable rather than merely estimable
+    status: declared_pending_each_release_publishing
+    estimable_today: false
+    estimable_today_reason: >-
+      no release in this arm has published, so there is no release instant, no receiver
+      and no donor. Its blocker is the calendar in front of this study's own two.
+    rule_vintage_for_this_arm: certifiable_by_a_capture_taken_before_each_release_instant
+    still_required_for_this_arm:
+      - a dated capture of the venue's live listing taken before each release instant
+      - a contract whose listing interval covers the release instant
+      - a donor at the declared preceding calendar date stating an identical predicate
+      - a point-in-time expectation source, which this arm does not supply
+    does_not_unblock_the_retrospective_arm: true
+    does_not_unblock_the_retrospective_arm_reason: >-
+      the arm is a set of future instants, not evidence about any 2025 contract's rule
+      version. The retrospective arm's refusal is a property of the archive and stays
+      exactly as measured; a capture taken in 2026 cannot certify a 2025 window even for
+      a contract that is still listed.
+  claim_attribution_rule: >-
+    every result from this file names the arm it was measured on. An admitted edge in
+    one arm is never reported as an admitted edge in the other, and a forward-arm
+    estimate is never reported as unblocking the retrospective arm's claim.
+
 scope: >-
   Source-time measurement of whether an admissible nearer-meeting donor contract's
   lagged return predicts a receiver contract's forward return, beyond the receiver's

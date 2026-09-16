@@ -28,6 +28,46 @@ title: Cross-venue propagation between prediction venues
 # worse for the design than the access story was: access is fine and the matched
 # instrument does not exist in the window.
 
+cohort_arms:
+  # Every measured count in this file is a count on the retrospective arm. The arms are
+  # declared and named in `configs/cohort_v2.yaml`; they are named here rather than
+  # copied. Nothing in this block changes a claim the retrospective arm already makes.
+  authority: configs/cohort_v2.yaml
+  arms_are_never_pooled: true
+  retrospective:
+    file: configs/cohort.yaml
+    cohort_id: core_2025h1
+    relation_to_this_study: the_arm_this_study_is_measured_on
+    status: blocked_no_matched_venue_pair_live_at_a_declared_release_instant
+    status_source: the status block above, which this block does not alter
+  forward:
+    file: configs/cohort_forward.yaml
+    cohort_id: forward_2026h2
+    relation_to_this_study: >-
+      a second arm this design would apply to unchanged, and the arm on which the
+      matching question can actually be asked forward: a matched pair would be declared
+      from pre-event information before each release instant rather than searched for
+      after the fact
+    status: declared_pending_each_release_publishing
+    estimable_today: false
+    estimable_today_reason: >-
+      no release in this arm has published, so there is no release instant to match a
+      pair against. This is a calendar blocker and it sits in front of this study's own
+      two blockers.
+    this_study_does_not_change_for_it: true
+    matching_still_required: >-
+      the forward arm does not relax the match: a pair is still admissible only on the
+      declared match fields read from each venue's own published text, and the measured
+      0 of 10 for the retrospective arm is not evidence that a forward instant will
+      match.
+    does_not_unblock_the_retrospective_arm: true
+    does_not_unblock_the_retrospective_arm_reason: >-
+      the forward arm supplies new release instants, not a matched instrument at the
+      2025 instants. The retrospective arm's finding stays the finding.
+  claim_attribution_rule: >-
+    every result from this file names the arm it was measured on, and a matched-pair
+    count from one arm is never reported as a count for the other.
+
 scope: >-
   Source-time measurement of whether one venue's price change around a release
   predicts the other venue's subsequent price change for the same economic claim.

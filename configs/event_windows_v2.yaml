@@ -20,6 +20,28 @@ alignment:
   clock_basis: source
   basis_is_retrospective: true
 
+# These declarations are arm-agnostic: they are stated in terms of a scheduled release
+# time and a contract, so they apply unchanged to both cohort arms declared in
+# `configs/cohort_v2.yaml` — the retrospective 2025 arm and the forward arm in
+# `configs/cohort_forward.yaml`. Nothing here is re-chosen per arm, no window is
+# widened for the forward arm, and no arm's rows are pooled with the other's.
+#
+# `fixed_utc_offset_allowed: false` is why each event carries its own `utc_offset_hours`
+# and `daylight_saving_in_effect` rather than the arm assuming one. The forward arm
+# spans the 2026-11-01 US daylight-saving boundary, so its October events are UTC-04:00
+# and its November and December events are UTC-05:00; each event states which applies,
+# and the conversion is checked per event rather than per arm.
+#
+# `basis_is_retrospective` is not a statement about the calendar being in the past. It
+# says that an archived transaction carries no receipt, so source alignment cannot
+# establish what a live participant knew. That is true of a forward release's archive
+# too, which is why a forward result is no less limited on this axis than a
+# retrospective one.
+cohort_arms:
+  authority: configs/cohort_v2.yaml
+  windows_apply_to: both_arms
+  windows_re_chosen_per_arm: false
+
 clock:
   forecast_origin_seconds: 300
   lag_guard_seconds: 60

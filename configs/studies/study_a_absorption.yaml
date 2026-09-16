@@ -14,6 +14,49 @@ title: Release absorption in threshold-contract transaction prices
 # depends on it? It asks nothing about surprise, nothing about transmission
 # between contracts, and nothing about what a live participant knew.
 
+cohort_arms:
+  # This study is measured on the retrospective arm, and every measured count in this
+  # file is a count on it. The arms are declared and named in
+  # `configs/cohort_v2.yaml`; they are named here rather than copied, so the two
+  # files cannot drift apart. Nothing in this block changes a claim the retrospective
+  # arm already makes, and nothing measured on either arm is pooled with the other.
+  authority: configs/cohort_v2.yaml
+  arms_are_never_pooled: true
+  unit_is_per_arm: >-
+    the unit is contract x release, and a release belongs to exactly one arm. A row
+    from the forward arm would be a row of this study's design, estimated on that arm's
+    own denominator with that arm's cohort id, and never added to the retrospective
+    arm's grid.
+  retrospective:
+    file: configs/cohort.yaml
+    cohort_id: core_2025h1
+    relation_to_this_study: the_arm_this_study_is_measured_on
+    status: blocked_pending_rule_vintage_evidence
+    status_source: the status block above, which this block does not alter
+  forward:
+    file: configs/cohort_forward.yaml
+    cohort_id: forward_2026h2
+    relation_to_this_study: >-
+      a second arm this design would apply to unchanged, since absorption is defined
+      from a scheduled release instant and a contract's own prints and needs neither the
+      graph nor a news vector
+    status: declared_pending_each_release_publishing
+    estimable_today: false
+    estimable_today_reason: >-
+      no release in this arm has published and no release row exists for one, so the
+      arm has no panel rows. Its blocker is the calendar, not the rule-vintage evidence
+      that blocks the retrospective arm.
+    this_study_does_not_change_for_it: true
+    this_study_does_not_change_for_it_reason: >-
+      the estimand, the horizons, the caps, the masks and the primary specification are
+      stated in terms of a release instant and a contract, not in terms of which arm the
+      release belongs to. A forward release is measured by the declaration already in
+      this file.
+  claim_attribution_rule: >-
+    every result from this file names the arm it was measured on. A figure computed on
+    one arm is never reported as a figure for the other, and the retrospective arm's
+    blocked status is never read as resolved by the forward arm existing.
+
 scope: >-
   Source-time transaction measurement of one contract's own price response to a
   scheduled macro release, per contract and release, at prespecified horizons. The

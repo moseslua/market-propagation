@@ -1,0 +1,402 @@
+# The forward arm of the study cohort: the next three scheduled CPI and the next
+# three scheduled Employment Situation releases, October through December 2026.
+#
+# This is a second arm, not a new version of the first one. `configs/cohort.yaml`
+# is the retrospective arm (`core_2025h1`) and stays frozen and unchanged; it
+# remains the arm every result reported so far is measured on, and it remains the
+# arm reported as blocked for want of rule-vintage evidence. This file declares the
+# prospective arm beside it, and `configs/cohort_v2.yaml` names both under `arms:`
+# so neither can be read as the other.
+#
+# Dates come from the official BLS release schedules, read 2026-09-17: the monthly
+# selected-release calendars for October, November and December 2026, and the
+# per-release schedule tables for the Consumer Price Index and the Employment
+# Situation. Each monthly calendar states that all times on it are Eastern Time.
+# The by-release tables carry only the next three reference months, because the BLS
+# schedule runs about three months ahead and is updated as needed. That horizon is
+# why this arm cannot be declared complete up front and is extended by the declared
+# rule below instead.
+#
+# scheduled_at is the scheduled release time in the source calendar timezone.
+# scheduled_at_utc is the same instant after America/New_York conversion.
+# No eligible market ID is recorded here. Candidate series are leads only.
+# PublicIngestion owns all market and endpoint discovery.
+
+cohort:
+  cohort_id: forward_2026h2
+  arm: forward
+  counterpart_arm_file: configs/cohort.yaml
+  counterpart_arm_id: core_2025h1
+  description: >-
+    the next three scheduled CPI and the next three scheduled Employment Situation
+    releases, October through December 2026, extended by the declared calendar rule
+  family_separation: cpi_and_employment_estimated_separately
+  event_count: 6
+  event_count_by_family:
+    cpi: 3
+    employment: 3
+  event_count_is_a_snapshot_on: "2026-09-17"
+  event_count_grows_by_the_extension_rule: true
+  selection_basis: >-
+    next_scheduled_release_per_family_from_the_official_bls_release_calendar_selected_before_publication
+  selected_without_reference_to_outcomes: true
+  selection_is_fixed_before_the_release_publishes: true
+  selection_reads_only: official_published_bls_release_calendar
+  selection_never_reads:
+    - whether any contract was live at the release instant
+    - whether any contract traded around the release instant
+    - whether any contract repriced after the release instant
+    - the release's own first-print actual, revision or surprise
+    - whether a point-in-time expectation source exists for the release
+  no_post_publication_addition_or_removal: true
+  no_post_publication_addition_or_removal_meaning: >-
+    a release appended by the rule below is never removed once the arm has been run
+    against it. A release that turns out to have no eligible contract, no live
+    donor and no expectation source stays in the arm and is reported with the reason
+    it contributed no row. Dropping it would select the arm on the outcome that
+    turned out to be inconvenient.
+  declared_windows_file: configs/event_windows_v2.yaml
+  declared_candidate_universe_file: configs/cohort_v2.yaml
+  policy_series_authority: configs/cohort_v2.yaml
+  rule_evidence_required: true
+  rule_evidence_authority: configs/neighbor_graph_v2.yaml
+  verified_eligible_market_ids: []
+  verified_eligible_market_id_count: 0
+  cross_venue_verified_matches: []
+  cross_venue_match_status: unverified_polymarket_access_timed_out
+  paid_spend_usd: 0
+
+# The mechanical rule that extends the arm. It is declared here, in the file it
+# extends, and repeated in `reports/preregistration_v2.md`. It is a function of a
+# published calendar and nothing else.
+extension_rule:
+  id: next_scheduled_release_per_family
+  authority: >-
+    the official BLS release schedules only: the by-release schedule table for the
+    family, https://www.bls.gov/schedule/news_release/cpi.htm and
+    https://www.bls.gov/schedule/news_release/empsit.htm, and the monthly selected
+    release calendars under https://www.bls.gov/schedule/{year}/{month:02d}_sched_list.htm
+  step_1: >-
+    Read the family's own by-release schedule table and its monthly selected-release
+    calendar.
+  step_2: >-
+    Take that family's earliest scheduled release whose instant is not already
+    declared in this file's `events` list. One release per family is appended per
+    round, so the two families advance independently and neither waits on the other.
+  step_3: >-
+    Record it with the calendar's own date, the calendar's own stated release time
+    converted from America/New_York to UTC, the reference period the calendar names,
+    the calendar URL it was read from, and the weekday the calendar states.
+  step_4: >-
+    Leave `initial_release_url_verified: false` and `observed_publication_time: null`
+    until the release has published and its archive page has been read. The arm's
+    release rows are built by the publication cadence, not declared in advance.
+  step_5: >-
+    Run the measurement for the appended release only after its instant has passed
+    and its row exists, so no row of this arm can be built from a release that had
+    not yet happened.
+  horizon_limitation: >-
+    the BLS schedule covers roughly the next three months and is updated as needed,
+    so an append round can name only the releases BLS has already dated. This is why
+    the arm is extended by a rule rather than declared complete, and why the arm's
+    event count is a snapshot with the date it was taken rather than a target.
+  append_cadence: before_each_declared_release_instant
+  append_cadence_reason: >-
+    each release must be in the arm, and its rule vintage captured, before its own
+    instant passes. An append made after the instant would be an append made with the
+    outcome available.
+  peeking_hazard: >-
+    appending a release after its own outcome is known — or letting any fact about
+    the release's market decide whether it is appended — would make the arm's
+    membership a function of its results. Every estimate from such an arm would be
+    selected on the outcome, the arm's event count would no longer be a denominator,
+    and no interval computed over it would mean what it states.
+  peeking_hazard_prevented_by:
+    - >-
+      membership is read from a published BLS calendar that BLS fixes in advance and
+      this repository does not write
+    - >-
+      the appended release is the earliest not-yet-declared one, so the rule names the
+      release without this repository choosing it
+    - >-
+      nothing about any contract's liveness, trading or repricing is read at
+      selection time, and nothing about the release's own actual, revision or
+      surprise is read at all
+    - >-
+      an appended release is never removed, so a disappointing release cannot be
+      dropped from the denominator
+    - >-
+      the capture that can certify a forward window opens its interval at the instant
+      the serving system states, so a capture taken after a window cannot certify it
+      even by mistake; see `configs/rule_attestation_v1.yaml`
+    - >-
+      each append round records its own date and its own source URL per release, so a
+      reader can check that a release entered the arm before its instant
+  changes_after_results_are_exploratory: true
+
+release_families:
+  cpi:
+    release_name: Consumer Price Index
+    bls_release_key: cpi
+    # The pattern carries a `{year}` placeholder rather than the fixed 2025 of the
+    # retrospective arm, because this arm is open-ended in time and an append round
+    # may land in a later year. Each event records the literal URL it was read from,
+    # which is what an audit re-derives from.
+    calendar_url_pattern: https://www.bls.gov/schedule/{year}/{month:02d}_sched_list.htm
+    by_release_schedule_url: https://www.bls.gov/schedule/news_release/cpi.htm
+    archive_url_pattern: https://www.bls.gov/news.release/archives/cpi_{mmddyyyy}.htm
+    typical_time: "08:30:00"
+    expectation_source_required: true
+    expectation_gate_scope: surprise_slopes_only
+    expectation_gate_meaning: >-
+      A pre-release expectation source is required only before a surprise slope is
+      estimated for this family. Its absence leaves every event in this file eligible for
+      the event-timing study, which is defined from scheduled release time and observed
+      quotes and needs no expectation source.
+    event_eligibility_effect_if_expectation_absent: none
+    timing_study_effect_if_expectation_absent: none
+  employment:
+    release_name: Employment Situation
+    bls_release_key: empsit
+    calendar_url_pattern: https://www.bls.gov/schedule/{year}/{month:02d}_sched_list.htm
+    by_release_schedule_url: https://www.bls.gov/schedule/news_release/empsit.htm
+    archive_url_pattern: https://www.bls.gov/news.release/archives/empsit_{mmddyyyy}.htm
+    typical_time: "08:30:00"
+    expectation_source_required: true
+    expectation_gate_scope: surprise_slopes_only
+    expectation_gate_meaning: >-
+      A pre-release expectation source is required only before a surprise slope is
+      estimated for this family. Its absence leaves every event in this file eligible for
+      the event-timing study, which is defined from scheduled release time and observed
+      quotes and needs no expectation source.
+    event_eligibility_effect_if_expectation_absent: none
+    timing_study_effect_if_expectation_absent: none
+
+expectation_availability:
+  known_expectation_source_for_these_events: unknown
+  status: unresolved_until_ingestion_reports
+  absence_effect_on_cohort_membership: none
+  absence_effect_on_timing_study: none
+  absence_effect_on_surprise_slopes: drop_that_slope_only
+  fabricated_or_hindsight_expectations: prohibited
+
+# Why this file declares events a release row cannot yet exist for.
+forward_rows_do_not_exist_yet:
+  statement: >-
+    a release row is built from a published release page, so no row for any event in
+    this file exists until that release publishes.
+  row_builder: scripts/import_bls_archives.py
+  row_builder_requires:
+    - a captured release page whose body ends in a complete HTML document
+    - the page's own embargo line to agree with the calendar's scheduled instant
+    - parsed release values, without which the row is refused rather than written
+  row_reader: src/market_propagation/trade_panel.py
+  row_reader_requires: >-
+    a sealed parquet built from those rows, verified by content hash against its
+    sibling manifest, so a hand-written row is not a row
+  consequence: >-
+    declaring a forward event here and making it measurable are different acts. This
+    file does the first. The second happens at the publication cadence, one release at
+    a time.
+  declares_no_release_values: true
+  declares_no_observed_publication_time: true
+
+events:
+  - event_id: cpi_2026_10
+    family: cpi
+    reference_period: "2026-09"
+    reference_period_label: September 2026
+    scheduled_at: "2026-10-14T08:30:00-04:00"
+    scheduled_at_utc: "2026-10-14T12:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -4
+    daylight_saving_in_effect: true
+    calendar_url: https://www.bls.gov/schedule/2026/10_sched_list.htm
+    calendar_weekday: Wednesday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_10142026.htm
+    initial_release_url_verified: false
+    initial_release_page_title: null
+    initial_release_page_title_status: not_observed_page_does_not_exist_yet
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: pending_release_has_not_published
+    eligibility_basis: the_scheduled_instant_is_in_the_future_so_no_contract_is_verified_at_it
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: >-
+      forward_event_no_release_row_exists_until_this_release_publishes
+
+  - event_id: cpi_2026_11
+    family: cpi
+    reference_period: "2026-10"
+    reference_period_label: October 2026
+    scheduled_at: "2026-11-10T08:30:00-05:00"
+    scheduled_at_utc: "2026-11-10T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2026/11_sched_list.htm
+    calendar_weekday: Tuesday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_11102026.htm
+    initial_release_url_verified: false
+    initial_release_page_title: null
+    initial_release_page_title_status: not_observed_page_does_not_exist_yet
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: pending_release_has_not_published
+    eligibility_basis: the_scheduled_instant_is_in_the_future_so_no_contract_is_verified_at_it
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: >-
+      daylight_saving_ended_2026-11-01_so_this_event_is_EST_and_shifts_UTC_by_one_hour
+
+  - event_id: cpi_2026_12
+    family: cpi
+    reference_period: "2026-11"
+    reference_period_label: November 2026
+    scheduled_at: "2026-12-10T08:30:00-05:00"
+    scheduled_at_utc: "2026-12-10T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2026/12_sched_list.htm
+    calendar_weekday: Thursday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_12102026.htm
+    initial_release_url_verified: false
+    initial_release_page_title: null
+    initial_release_page_title_status: not_observed_page_does_not_exist_yet
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: pending_release_has_not_published
+    eligibility_basis: the_scheduled_instant_is_in_the_future_so_no_contract_is_verified_at_it
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: >-
+      forward_event_no_release_row_exists_until_this_release_publishes
+
+  - event_id: empsit_2026_10
+    family: employment
+    reference_period: "2026-09"
+    reference_period_label: September 2026
+    scheduled_at: "2026-10-02T08:30:00-04:00"
+    scheduled_at_utc: "2026-10-02T12:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -4
+    daylight_saving_in_effect: true
+    calendar_url: https://www.bls.gov/schedule/2026/10_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_10022026.htm
+    initial_release_url_verified: false
+    initial_release_page_title: null
+    initial_release_page_title_status: not_observed_page_does_not_exist_yet
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: pending_release_has_not_published
+    eligibility_basis: the_scheduled_instant_is_in_the_future_so_no_contract_is_verified_at_it
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: >-
+      forward_event_no_release_row_exists_until_this_release_publishes
+
+  - event_id: empsit_2026_11
+    family: employment
+    reference_period: "2026-10"
+    reference_period_label: October 2026
+    scheduled_at: "2026-11-06T08:30:00-05:00"
+    scheduled_at_utc: "2026-11-06T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2026/11_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_11062026.htm
+    initial_release_url_verified: false
+    initial_release_page_title: null
+    initial_release_page_title_status: not_observed_page_does_not_exist_yet
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: pending_release_has_not_published
+    eligibility_basis: the_scheduled_instant_is_in_the_future_so_no_contract_is_verified_at_it
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: >-
+      daylight_saving_ended_2026-11-01_so_this_event_is_EST_and_shifts_UTC_by_one_hour
+
+  - event_id: empsit_2026_12
+    family: employment
+    reference_period: "2026-11"
+    reference_period_label: November 2026
+    scheduled_at: "2026-12-04T08:30:00-05:00"
+    scheduled_at_utc: "2026-12-04T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2026/12_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_12042026.htm
+    initial_release_url_verified: false
+    initial_release_page_title: null
+    initial_release_page_title_status: not_observed_page_does_not_exist_yet
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: pending_release_has_not_published
+    eligibility_basis: the_scheduled_instant_is_in_the_future_so_no_contract_is_verified_at_it
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: >-
+      forward_event_no_release_row_exists_until_this_release_publishes
+
+candidate_contract_families:
+  # `configs/cohort.yaml` declares per-family lead lists here. This arm declares none
+  # of its own, and that absence is stated rather than left to be read as a gap: leads
+  # are unverified leads in either file (`verified_contract_ids: []` in both), and the
+  # authority that turns a series name into a candidate is the v2 cohort file, which
+  # both arms read.
+  declared_here: false
+  authority: configs/cohort_v2.yaml
+  authority_keys:
+    - policy_series
+    - candidate_universe
+    - receivers
+  candidate_universe_rule: per_release_declared_listing_grid
+  verified_contract_ids: []
+  contract_ids_status: unverified_no_eligible_contract_verified_for_any_event
+  why_no_leads_are_declared_here: >-
+    a lead list written before a release exists would be an inference about which
+    contracts will be listed, and this arm's whole point is that its membership is read
+    from a published calendar and not guessed. The candidate universe is instead the
+    declared grid, computed per release from the four declared policy series and each
+    contract's own recorded listing interval, with no post-event quantity selecting it.
+
+provenance:
+  calendar_sources_read:
+    - https://www.bls.gov/schedule/news_release/cpi.htm
+    - https://www.bls.gov/schedule/news_release/empsit.htm
+    - https://www.bls.gov/schedule/2026/10_sched_list.htm
+    - https://www.bls.gov/schedule/2026/11_sched_list.htm
+    - https://www.bls.gov/schedule/2026/12_sched_list.htm
+  archive_url_form_verified_against:
+    - https://www.bls.gov/news.release/archives/cpi_09112026.htm
+    - https://www.bls.gov/news.release/archives/empsit_09042026.htm
+  archive_url_form_verification_meaning: >-
+    the archive path form for a 2026 release was confirmed against the two most recent
+    published release pages, which state their own embargo instants and name their own
+    successor's scheduled date. It is evidence about the URL form, not about any event
+    in this file: no forward archive page exists yet, and each forward URL returned
+    HTTP 404 when read on 2026-09-17.
+  timezone_note: >-
+    every monthly calendar read carries the note that all times on it are Eastern Time.
+    US daylight saving ended on 2026-11-01, so the October events are UTC-04:00 and the
+    November and December events are UTC-05:00. `configs/event_windows_v2.yaml` sets
+    `fixed_utc_offset_allowed: false`, so each offset is carried per event rather than
+    assumed for the arm.
+  read_on: "2026-09-17"

@@ -29,6 +29,37 @@ title: Perpetual-futures cross-venue funding differentials, basis and absorption
 # built, and why the sample below is described as it is rather than as its design
 # intends it to become.
 
+cohort_arms:
+  # Study D has no release, no cohort and no arm, and this block states that rather
+  # than leaving a reader to infer it. Every measured count in this file is a perp
+  # cross-section, and none of it is a count on either release arm.
+  authority: configs/cohort_v2.yaml
+  release_arms_apply: false
+  release_arms_apply_reason: >-
+    this study's unit is asset x venue pair x time and its clock is the source's own
+    build stamp. It contains no release instant, so the release cohort — in either arm
+    — is not part of its sample, its denominator or its estimand. The forward arm's
+    existence changes nothing here.
+  retrospective:
+    file: configs/cohort.yaml
+    cohort_id: core_2025h1
+    relation_to_this_study: none_this_study_reads_no_release_cohort
+    status_is_unchanged_by_this_study: true
+  forward:
+    file: configs/cohort_forward.yaml
+    cohort_id: forward_2026h2
+    relation_to_this_study: none_this_study_reads_no_release_cohort
+    does_not_unblock_this_study: true
+    does_not_unblock_this_study_reason: >-
+      this study's blockers are a one-build series and an unobservable cost layer.
+      Forward release instants supply neither. More rule work does not help here either,
+      which is the same two-way independence the status block states from the other
+      side.
+    collection_time_does_not_help_the_release_arms_either: true
+  claim_attribution_rule: >-
+    nothing in this file is reported as a result on a release arm, and no release-arm
+    figure is reported as a perp figure.
+
 scope: >-
   Source-time cross-sectional and build-to-build measurement of cross-venue funding
   differentials and price basis in perpetual futures, and of how quickly a quoted

@@ -39,6 +39,50 @@ The four units are genuinely different, and none is a special case of another. A
 one contract and one instant. C is two contracts at two meetings. B is two contracts
 at two venues. D has no contract and no release at all.
 
+## 1.1 The two cohort arms, and which study they reach
+
+The study population has two arms, declared in `configs/cohort_v2.yaml` under `arms:`
+and never pooled. This is a subsection of section 1 rather than a new numbered section
+so that no existing section number or cross-reference in this document moves.
+
+| Arm | File | Cohort id | Releases | What it is |
+| --- | --- | --- | --- | --- |
+| Retrospective | `configs/cohort.yaml` | `core_2025h1` | 10 | the frozen 2025 cohort every result so far is measured on |
+| Forward | `configs/cohort_forward.yaml` | `forward_2026h2` | 6, growing | the prospective arm, extended by a declared calendar rule |
+
+**Each study file declares its own relation to the arms** in a top-level
+`cohort_arms:` block that names the arm files rather than copying them. Nothing in any
+such block changes a claim the retrospective arm already makes, and the claims section
+of this document names the arm each claim is measured on.
+
+| Study | Retrospective arm | Forward arm |
+| --- | --- | --- |
+| A. Release absorption | the arm it is measured on; blocked on the rule-vintage record | the same design applies unchanged; not estimable today because no release in it has published |
+| B. Cross-venue propagation | blocked on a missing matched instrument | the design applies unchanged; still needs a verified match, which this arm does not supply |
+| C. Cross-meeting propagation | blocked on the rule-vintage record; this is the arm whose refusal is the measured finding | the arm its windows can be certified on, because a capture opens its interval at the instant the serving system states, before the release it certifies |
+| D. Perp arbitrage and absorption | reads no release cohort at all | reads no release cohort at all; its blockers are a one-build series and an unobservable cost layer, which forward release instants do not touch |
+
+Three rules keep the arms from merging silently.
+
+1. **A result names its arm.** Every figure computed on one arm is reported with that
+   arm's cohort id. A count from one arm is never reported as a count for the other,
+   and the two are never pooled into one estimate or one denominator.
+2. **The retrospective arm stays the reported blocked arm.** It is retained, it is not
+   deleted, and it is not rewritten. A forward release publishing does not change a
+   single count measured on it. In particular, a rule capture taken in 2026 cannot
+   certify a window that closed in 2025, so the retrospective arm's refusal is a
+   property of the archive rather than a gap that time closes.
+3. **An unblocked forward arm does not unblock the retrospective arm's claim.** The
+   two blockers are different kinds: one is a set of missing observations for windows
+   already past, the other is a cadence that has to run before windows yet to come. The
+   forward arm is the demonstration that the rule-vintage requirement can be met; it is
+   not evidence that it was met for the 2025 releases.
+
+The forward arm's extension rule, its peeking hazard and the reason its release rows
+cannot exist until each release publishes are stated in
+`reports/preregistration_v2.md` section 2.2, with the rule itself declared in
+`configs/cohort_forward.yaml`.
+
 ## 2. The event-time convention
 
 Every study that has a release uses one convention, inherited from the v2 freeze
@@ -452,7 +496,8 @@ the build series, is already closing because the collector is running.
 | `.audit/external-measurements.md` | the archive facts: shard partitioning, field semantics, measured in-window activity |
 | `configs/study_v2.yaml` | the clock, estimands, caps, ladder, splits, seeds and calibration |
 | `configs/event_windows_v2.yaml` | the windows, the observation floor and the missingness rules |
-| `configs/cohort_v2.yaml` | the declared series, the candidate-universe rule and the rule-vintage requirement |
+| `configs/cohort_v2.yaml` | the two declared arms, the declared series, the candidate-universe rule and the rule-vintage requirement |
+| `configs/cohort_forward.yaml` | the forward arm's six releases and the mechanical rule that extends it |
 | `configs/neighbor_graph_v2.yaml` | the decision calendar, the predicate match fields and the rule-vintage record shape |
 | `configs/perp_arbitrage_v1.yaml` | the perp collection cadence, universe rules and claim limits |
 | `reports/preregistration.md`, `reports/preregistration_v2.md` | the v1 and v2 freezes these four studies sit beside and inherit from |
