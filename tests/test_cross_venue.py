@@ -162,6 +162,29 @@ def test_series_membership_excludes_a_series_the_cohort_does_not_declare(layers)
     assert not any(ticker.startswith("KXCPI") for ticker in ids)
 
 
+def test_a_rooted_pattern_is_read_because_the_cli_hands_over_a_resolved_layer(layers):
+    """A window-scoped run resolves its layer and passes a pattern that carries its anchor.
+
+    ``match-cross-venue`` given a window resolves which declared market layer governs it
+    and passes ``<root>/<path_pattern>`` rather than the configured relative glob.
+    Globbing that against the working directory raises instead of reading, so both
+    anchored and relative patterns have to be readable here.
+    """
+    rooted = str(layers / "markets" / "*.parquet")
+    records = first_venue_records(rooted, ("KXFEDDECISION", "FEDDECISION"))
+    assert "FEDDECISION-25JAN-T4.25" in [record["contract_id"] for record in records]
+
+
+def test_a_rooted_second_venue_pattern_is_read_too(layers):
+    """The same hazard on the other layer, which no current caller passes rooted."""
+    rooted = str(layers / "poly" / "*.parquet")
+    names, selection = second_venue_records(
+        rooted, identity_column="market_slug", slug_pattern=None, limit=None
+    )
+    assert names == sorted(SLUGS)
+    assert selection["records_available"] == len(SLUGS)
+
+
 def test_a_layer_with_no_records_is_refused_rather_than_reported_empty():
     with pytest.raises(CrossVenueError, match="no market records matched"):
         first_venue_records("nothing/here/*.parquet", ("KXFEDDECISION",))

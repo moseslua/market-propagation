@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import collections
 import datetime as dt
+import glob
 import pathlib
 import re
 from dataclasses import dataclass
@@ -118,7 +119,7 @@ def first_venue_records(markets_glob: str, series: tuple[str, ...]) -> list[dict
     SQL, so the membership rule has exactly one implementation and a ticker that
     merely contains the letters is not a match.
     """
-    files = sorted(str(path) for path in pathlib.Path().glob(markets_glob))
+    files = sorted(glob.glob(markets_glob))
     if not files:
         raise CrossVenueError(f"no market records matched {markets_glob}")
     connection = duckdb.connect()
@@ -161,7 +162,7 @@ def second_venue_records(
     candidate universe with the total recorded, which reads as an empty search rather
     than as an absence of contracts.
     """
-    files = sorted(str(path) for path in pathlib.Path().glob(layer_glob))
+    files = sorted(glob.glob(layer_glob))
     if not files:
         raise CrossVenueError(f"no records matched {layer_glob}")
     connection = duckdb.connect()
