@@ -70,6 +70,33 @@ cannot support.
   distinguishable from one written beside a real status line. It refuses the sealed
   2025 capture directory, refuses to overwrite a capture, and refuses an event with no
   declared archive URL.
+- **Monthly market/trade capture** — the command `capture-markets`,
+  `src/market_propagation/ingest/market_capture.py`, 33 tests, and the two declared
+  layers `kalshi_own_markets` / `kalshi_own_trades` under `data/external/kalshi-own/`.
+  The venue's live partition retains roughly three months, so a window not captured
+  while it is still live can no longer be acquired: this is the cadence that acquires
+  it, and it exists because the forward arm's windows would otherwise arrive with no
+  transactions to measure.
+  - The layer is its own directory under the configured archive root rather than a
+    shard inside `kalshi-trades/`, and its `input_class` is
+    `locally_captured_public_data`. Our rows are never attributed to the vendor
+    dataset's producer or licence, and a reader can tell the two provenances apart in
+    a sealed dataset because `kalshi_trade_from_row(layer=...)` puts the layer name in
+    `provenance.source`.
+  - Both Kalshi layers are read through one path. `KALSHI_LAYERS` replaced three
+    separate `layer == KALSHI_LAYER` equality tests, so a new Kalshi layer cannot be
+    half-registered: an unregistered one would be read as `epoch_seconds` and labelled
+    `polymarket`, which is a silent misreading rather than a missing one.
+  - The two-source rule is declared in `configs/external_history_v1.yaml` under
+    `two_source_authority:`. A window exactly one layer covers is governed by that
+    layer and the resolution records which one, its shard count and its contract count;
+    a window both cover is **refused** unless a layer is named explicitly, because one
+    contract held in both layers would otherwise be counted twice and inflate the
+    denominator every rate is divided by. `fallback_to_the_other_layer: prohibited`.
+  - Coverage is read from shard file-name stamps, not from row times. Measured: our
+    captured shard's `created_time` is the contract's own creation time, so reading
+    coverage from row times would claim our layer reaches windows it cannot and
+    recreate the retroactive error the capture exists to avoid.
 
 ### Fixed
 
@@ -123,7 +150,23 @@ cannot support.
   and the capture directory is named `bls-browser`, and why the capture script has no
   direct-fetch mode: a mode that returned 403 would invite a reader to think the source
   refused rather than the client being unable to ask.
-- **Test suite.** 1076 → **1084** tests. `ruff check` and `ruff format --check` clean.
+- **The two market layers are disjoint in time, with a permanent gap.** The vendor
+  archive's rows end 2026-01-29 and this repository's own capture begins 2026-09-16, so
+  no window is covered by both on this checkout and no window between those dates is
+  covered by either. The gap cannot be closed by collecting later: it is the interval
+  in which nobody held the bytes. It is why the capture cadence is a prerequisite for
+  the forward arm rather than an optimisation, and why the forward arm's first release
+  (2026-10-02) is the earliest window any layer will cover.
+- **Capture against the live venue, run for verification.** `capture-markets` over
+  2026-09-14 → 2026-09-17 wrote 10 market rows to a sealed shard in the archive layout:
+  21 columns including `rules_primary` and `rules_secondary`, UTC microsecond
+  timestamps, and prices as exact integer cents (`yes_bid` 71 where the venue states
+  `0.7100`). The resolution reported `basis: sole_covering_layer` with the vendor layer
+  covering 147 declared-series contracts and our layer covering none, and the partition
+  decision recorded the live cutoff as 2026-07-18 from `trades_created_ts`. The live
+  ledger carries each contract's own published rule text where the vendor archive's
+  volume column stores a zero.
+- **Test suite.** 1076 → **1117** tests. `ruff check` and `ruff format --check` clean.
 
 ### Not established
 
@@ -133,6 +176,10 @@ cannot support.
   exists" to "the observed universe and the studied universe do not overlap", and
   admitting live-observed contracts is a cohort decision rather than a wiring change.
   `rule_verified_pairs` remains 0 of 785 and the graph admits 0 edges.
+- **No forward window is covered by the vendor archive.** Its rows end 2026-01-29, so
+  the forward arm's windows can only be covered by this repository's own capture, which
+  has to run on its monthly cadence from now on. A month missed is a window whose bytes
+  are gone, and the live partition retains about three months.
 - **The second venue's Fed-decision family is observable but not matched.** A search of
   its public listing on 2026-09-17 returns a per-meeting family with basis-point-change
   strikes. The recorded 0 of 10 stands for the ten declared 2025 instants; whether the

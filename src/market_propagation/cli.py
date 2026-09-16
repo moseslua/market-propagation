@@ -75,6 +75,7 @@ DEFAULT_ATTESTATION_CONFIG = "configs/rule_attestation_v1.yaml"
 DEFAULT_MATCH_CONFIG = "configs/matching_v1.yaml"
 DEFAULT_COHORT_CONFIG = "configs/cohort_v2.yaml"
 DEFAULT_GRAPH_CONFIG = "configs/neighbor_graph_v2.yaml"
+DEFAULT_PIPELINE_CONFIG = "configs/external_history_v1.yaml"
 
 #: The two local layers the cross-venue candidate universe is drawn from.
 DEFAULT_MARKETS_GLOB = "data/external/kalshi-trades/markets-*.parquet"
@@ -1135,6 +1136,92 @@ def _run_absorption_panel(args: argparse.Namespace) -> int:
     return EXIT_OK if overall.get("estimateable_pairs") else EXIT_BLOCKED
 
 
+def _run_capture_markets(args: argparse.Namespace) -> int:
+    """Capture the venue's own market records and trades for one declared window.
+
+    The window is the request: the live partition retains roughly three months, so a
+    window not captured while it is still live is a window whose bytes can no longer
+    be acquired. The window is required rather than defaulted, because a default would
+    silently capture whatever the clock happened to be near.
+
+    The market layer this writes is this repository's own, and it is declared as its
+    own input layer. The vendor archive is a third-party CC-BY-4.0 dataset, so our rows
+    go under their own root rather than beside theirs.
+    """
+    from .ingest import market_capture
+    from .ingest.transport import HttpTransport, RetryPolicy
+    from .operations import REQUEST_PACING_SECONDS
+    from .storage import RawStore
+
+    config = _pipeline_config(args.pipeline)
+    root = _repo_relative(
+        _dig(config, "inputs.root", purpose="pipeline configuration"), config_path=args.pipeline
+    )
+    series = list(args.series or market_capture.declared_series(args.cohort))
+    window_start = dt.datetime.fromisoformat(str(args.window_start))
+    window_end = dt.datetime.fromisoformat(str(args.window_end))
+    for name, value in (("window_start", window_start), ("window_end", window_end)):
+        if value.tzinfo is None:
+            raise ValueError(f"--{name.replace('_', '-')} must carry a timezone offset")
+
+    # The window is resolved against both declared market layers first, so a window
+    # this capture cannot govern is refused before a single byte is fetched rather
+    # than after a shard has been written for it.
+    existing = market_capture.resolve_market_layer(
+        root,
+        window_start=window_start,
+        window_end=window_end,
+        series=series,
+        config_path=args.pipeline,
+        layer=args.market_layer,
+    )
+
+    capture_root = args.root or str(root / market_capture.DEFAULT_CAPTURE_ROOT)
+    raw_store = RawStore(pathlib.Path(args.raw_store or (root / "raw")))
+    transport = HttpTransport(
+        raw_store,
+        timeout_seconds=args.timeout,
+        policy=RetryPolicy(min_interval_seconds=REQUEST_PACING_SECONDS),
+    )
+    with transport:
+        capture = market_capture.capture_window(
+            root=capture_root,
+            series=series,
+            window_start=window_start,
+            window_end=window_end,
+            raw_store=raw_store,
+            transport=transport,
+            max_pages=args.max_pages,
+            limit=args.limit,
+            trade_limit=args.trade_limit,
+            trade_max_pages=args.trade_max_pages,
+            max_contracts=args.max_contracts,
+        )
+    payload = capture.as_dict()
+    payload["market_layer_resolution"] = existing.as_dict()
+    if args.output:
+        path = pathlib.Path(args.output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(_jsonable(payload), indent=2, sort_keys=True) + "\n")
+        payload["output_path"] = str(path)
+    _print_json(payload)
+    _note(
+        f"{capture.markets_written} market row(s) and {capture.trades_written} trade row(s) "
+        f"captured into {capture_root}; partition {capture.partition['partition']}"
+    )
+    _note(f"market layer resolution: {existing.layer} ({existing.basis})")
+    for flag in capture.flags:
+        _note(f"flag: {flag}")
+    for refusal in list(capture.refusals)[:8]:
+        _note(
+            f"refused: {refusal.get('stage')} {refusal.get('contract_id') or ''} {refusal.get('reason')}"
+        )
+    blocked = not capture.markets_written or any(
+        flag in capture.flags for flag in ("listing_refused", "listing_incomplete")
+    )
+    return EXIT_BLOCKED if blocked else EXIT_OK
+
+
 def _run_match_cross_venue(args: argparse.Namespace) -> int:
     """Grade every cross-venue candidate pair and write the registry.
 
@@ -1142,19 +1229,67 @@ def _run_match_cross_venue(args: argparse.Namespace) -> int:
     is printed beside the counts: what the layer held, what the declared pattern
     matched, what was supplied, and whether a cap hid anything. A count from a
     bounded universe is never presented as a count from the whole layer.
+
+    The first venue's market layer is resolved before anything is read, because two
+    declared layers hold Kalshi market records and a window both cover must be
+    resolved by a named layer rather than by whichever glob was passed first.
     """
     from . import cross_venue
+    from .ingest import market_capture
+
+    markets_glob = args.markets_glob
+    resolution = None
+    if markets_glob is None:
+        if not args.window_start or not args.window_end:
+            raise ValueError(
+                "no --markets-glob was given, so the first venue's market layer is resolved "
+                "for the window; --window-start and --window-end are both required for that"
+            )
+        config = _pipeline_config(args.pipeline)
+        root = _repo_relative(
+            _dig(config, "inputs.root", purpose="pipeline configuration"), config_path=args.pipeline
+        )
+        cohort = yaml.safe_load(pathlib.Path(args.cohort).read_text(encoding="utf-8"))
+        series = cross_venue.declared_policy_series(cohort)
+        resolution = market_capture.resolve_market_layer(
+            root,
+            window_start=dt.datetime.fromisoformat(str(args.window_start)),
+            window_end=dt.datetime.fromisoformat(str(args.window_end)),
+            series=series,
+            config_path=args.pipeline,
+            layer=args.market_layer,
+        )
+        if not resolution.available:
+            _print_json(
+                {
+                    "produced_by": f"{PROGRAM}.match-cross-venue",
+                    "market_layer_resolution": resolution.as_dict(),
+                }
+            )
+            _note(f"the first venue's market layer was not resolved: {resolution.reason}")
+            return EXIT_BLOCKED
+        markets_glob = str(
+            root / dict(market_capture.declared_market_layers(args.pipeline))[resolution.layer]
+        )
+        _note(
+            f"first venue's market layer {resolution.layer} ({resolution.basis}); "
+            f"{resolution.reason}"
+        )
 
     result = cross_venue.run_cross_venue_matching(
         match_config_path=args.config,
         cohort_config_path=args.cohort,
         graph_config_path=args.graph,
-        markets_glob=args.markets_glob,
+        markets_glob=markets_glob,
         second_venue_glob=args.second_venue_glob,
         second_venue_limit=args.second_venue_limit,
         slug_pattern=args.slug_pattern,
     )
     summary = result.summary()
+    if resolution is not None:
+        # The resolution travels with the registry, so a run states which layer it
+        # read and on what basis instead of leaving that to the glob's spelling.
+        summary = {**summary, "market_layer_resolution": resolution.as_dict()}
     if args.output:
         output = pathlib.Path(args.output)
         if output.parent != pathlib.Path(""):
@@ -1758,6 +1893,47 @@ def _build_parser() -> argparse.ArgumentParser:
     absorption_command.add_argument("--output", help="path of the JSON result to write")
     absorption_command.set_defaults(handler=_run_absorption_panel)
 
+    markets_capture = commands.add_parser(
+        "capture-markets",
+        help="capture the venue's own market records and trades for one window",
+        description=(
+            "GET the venue's own market listing and trade feed for every declared policy "
+            "series over one window, archive every response page through the raw store, "
+            "normalize the rows with the venue's own normalizers, and write shards in the "
+            "layout the external-history pipeline already reads. The venue's live "
+            "partition retains roughly three months, so a window not captured while it is "
+            "still live is a window whose bytes can no longer be acquired. The rows are "
+            "written under this repository's own root rather than into the vendor "
+            "archive's directory, and the layer is declared as its own input. Issues GET "
+            "requests only and uses no credentials."
+        ),
+    )
+    markets_capture.add_argument("--pipeline", default=DEFAULT_PIPELINE_CONFIG)
+    markets_capture.add_argument("--cohort", default=DEFAULT_COHORT_CONFIG)
+    markets_capture.add_argument(
+        "--series", action="append", help="series ticker; repeatable; defaults to the cohort"
+    )
+    markets_capture.add_argument("--window-start", required=True, help="window start, with offset")
+    markets_capture.add_argument("--window-end", required=True, help="window end, with offset")
+    markets_capture.add_argument("--root", help="capture root; defaults to the configured root")
+    markets_capture.add_argument("--raw-store", help="raw store root; defaults to <root>/raw")
+    markets_capture.add_argument(
+        "--market-layer",
+        help="name the governing market layer explicitly when both declared layers cover",
+    )
+    markets_capture.add_argument("--limit", type=int, default=200, help="contracts per page")
+    markets_capture.add_argument("--max-pages", type=int, default=25, help="page bound per series")
+    markets_capture.add_argument("--trade-limit", type=int, default=1000, help="trades per page")
+    markets_capture.add_argument(
+        "--trade-max-pages", type=int, default=20, help="page bound per contract's trades"
+    )
+    markets_capture.add_argument(
+        "--max-contracts", type=int, default=400, help="contracts whose trades are walked"
+    )
+    markets_capture.add_argument("--timeout", type=float, default=30.0)
+    markets_capture.add_argument("--output", help="path of the JSON summary to write")
+    markets_capture.set_defaults(handler=_run_capture_markets)
+
     match = commands.add_parser(
         "match-cross-venue",
         help="grade every cross-venue candidate pair into a match registry",
@@ -1778,7 +1954,24 @@ def _build_parser() -> argparse.ArgumentParser:
     match.add_argument("--cohort", default=DEFAULT_COHORT_CONFIG, help="declared candidate series")
     match.add_argument("--graph", default=DEFAULT_GRAPH_CONFIG, help="declared decision calendar")
     match.add_argument(
-        "--markets-glob", default=DEFAULT_MARKETS_GLOB, help="first venue's market records"
+        "--pipeline", default=DEFAULT_PIPELINE_CONFIG, help="declared archive layers"
+    )
+    match.add_argument(
+        "--markets-glob",
+        help=(
+            "first venue's market records; omit to resolve the declared layer for the "
+            "window instead of naming a file glob"
+        ),
+    )
+    match.add_argument(
+        "--market-layer",
+        help="name the governing market layer explicitly when both declared layers cover",
+    )
+    match.add_argument(
+        "--window-start", help="window the market layer is resolved for, when no glob is given"
+    )
+    match.add_argument(
+        "--window-end", help="window the market layer is resolved for, when no glob is given"
     )
     match.add_argument(
         "--second-venue-glob",

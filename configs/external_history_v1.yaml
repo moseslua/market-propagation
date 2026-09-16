@@ -43,6 +43,31 @@ inputs:
       license: CC-BY-4.0
       time_column: created_time
       time_unit: timestamp_us_utc
+    # This repository's own prospective capture of the venue's live listing and
+    # trades, taken on a monthly cadence. It is its own directory rather than a
+    # shard inside `kalshi-trades/` so our rows are never attributed to the vendor
+    # dataset's producer or licence above, and its `input_class` is the class that
+    # says these bytes are locally captured public data rather than an acquired
+    # third-party archive. Both Kalshi layers share the vendor archive's column
+    # layout and its microsecond-UTC unit, so one extraction path reads either.
+    - name: kalshi_own_markets
+      path_pattern: kalshi-own/markets/markets-*.parquet
+      input_class: locally_captured_public_data
+      role: market_metadata_snapshot
+      venue: kalshi
+      producer: this repository's own capture of the public Kalshi listing
+      license: none asserted; public venue data fetched by this repository
+      time_column: created_time
+      time_unit: timestamp_us_utc
+    - name: kalshi_own_trades
+      path_pattern: kalshi-own/trades/trades-*.parquet
+      input_class: locally_captured_public_data
+      role: source_trades
+      venue: kalshi
+      producer: this repository's own capture of the public Kalshi trade feed
+      license: none asserted; public venue data fetched by this repository
+      time_column: created_time
+      time_unit: timestamp_us_utc
     - name: polymarket_orderfilled
       path_pattern: polymarket-v1/OrderFilled/*.parquet
       input_class: external_historical_archive
@@ -117,6 +142,12 @@ policy_series:
 # is never added to a cleaned layer as extra observations.
 normalization:
   kalshi_layer: kalshi_trades
+  # This repository's own captured trade layer. It is named separately rather than
+  # aliased onto `kalshi_layer`, because the two are different input classes and a
+  # reader has to be able to see which one a result was produced from.
+  kalshi_own_layer: kalshi_own_trades
+  # The captured market universe, read by the candidate-universe path.
+  kalshi_own_market_layer: kalshi_own_markets
   polymarket_layer: polymarket_daily_aligned
   polymarket_lineage_layers:
     - polymarket_orderfilled
@@ -132,6 +163,42 @@ normalization:
   # event axis is derived from `outcome_seq`, never from the eventual winner.
   polymarket_event_axis: outcome_seq_1_is_price
   kalshi_event_axis: yes_price_is_event_axis
+
+# Which Kalshi market layer governs a window when both cover it. The two layers
+# genuinely overlap, and the overlap was measured on this checkout rather than
+# assumed: of the contracts our own capture wrote, every one is also present in the
+# vendor archive. Both layers also yield a candidate universe for a forward window,
+# because a contract whose listing interval reaches that window is in both, so a
+# read that draws from both counts the same contract twice.
+# The rule below is what prevents that double count.
+two_source_authority:
+  market_layer: kalshi_own_markets
+  # The layer that governs when a window must be resolved to one layer. Our capture
+  # is the authority for a window it covers because it is a prospective observation
+  # of the venue's own listing: it carries each contract's published rule text
+  # beside its lifecycle, and its bytes are the ones this repository fetched and
+  # archived itself. The vendor layer is a retrospective snapshot whose own
+  # `volume` column holds a zero where the venue states a real value, so it is
+  # metadata evidence rather than activity evidence.
+  reason: >-
+    the captured layer is a prospective observation of the venue's own listing and
+    carries the contract's published rule text and lifecycle together, so it
+    governs every window it covers.
+  # The rule applied to a window both layers cover. Refusing is the point: the two
+  # layers hold the same contracts from different vintages, so a union would count
+  # one contract twice and inflate the denominator every rate is measured against.
+  overlapping_window_policy: refuse_unless_a_layer_is_named_explicitly
+  # A window exactly one layer covers is governed by that layer, and the resolution
+  # records which one and how many contracts it holds, so the choice is a stated
+  # fact rather than an inference from a file glob.
+  partition_is_a_verified_cover: true
+  # A refusal must say which layers it saw and how many shards each holds, so a
+  # reader can tell an overlap from a layer that is simply missing on this checkout.
+  refusal_reports_both_patterns_and_their_shard_counts: true
+  # Neither layer is a fallback for the other. A window the governing layer does
+  # not cover is an uncovered window, never a window served by a different
+  # provenance under the same name.
+  fallback_to_the_other_layer: prohibited
 
 extraction:
   # Bounded development window. Shards are selected by their actual timestamp

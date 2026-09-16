@@ -58,6 +58,8 @@ __all__ = [
     "DEFAULT_PRICE_TOLERANCE",
     "KALSHI_EVENT_AXIS",
     "KALSHI_LAYER",
+    "KALSHI_LAYERS",
+    "KALSHI_OWN_LAYER",
     "KALSHI_VENUE",
     "POLYMARKET_EVENT_AXIS_OUTCOME_1",
     "POLYMARKET_EVENT_AXIS_OUTCOME_2",
@@ -74,11 +76,28 @@ __all__ = [
 ]
 
 #: Layer names, and the venue each one's rows belong to.
+#:
+#: ``KALSHI_OWN_LAYER`` is this repository's own monthly capture of the venue's
+#: listing and trades, written in the archive layout the vendor layer uses so the
+#: same projection, time unit and mapper read it. It is a *different input class*
+#: from the vendor archive: the vendor layer is a third-party CC-BY-4.0 dataset,
+#: and this one is public venue data this repository fetched itself. Both are
+#: Kalshi rows, so both are registered here rather than one being aliased onto the
+#: other: an unregistered layer would be read as ``epoch_seconds`` and labelled
+#: ``polymarket``, which is a silent misreading rather than a missing one.
 KALSHI_LAYER = "kalshi_trades"
+KALSHI_OWN_LAYER = "kalshi_own_trades"
 POLYMARKET_STANDARD_LAYER = "polymarket_daily_aligned"
 POLYMARKET_NEG_RISK_LAYER = "polymarket_daily_aligned_multi"
 KALSHI_VENUE = "kalshi"
 POLYMARKET_VENUE = "polymarket"
+
+#: Every layer whose rows are Kalshi trades. Membership here selects the venue, the
+#: microsecond-UTC time unit and the Kalshi mapper, so a layer added to this tuple is
+#: read exactly as the vendor layer is. The tuple is the single place the three
+#: previously separate ``layer == KALSHI_LAYER`` tests read, so a new Kalshi layer
+#: cannot be half-registered.
+KALSHI_LAYERS: tuple[str, ...] = (KALSHI_LAYER, KALSHI_OWN_LAYER)
 
 #: How a row's price is projected onto the event axis. Kalshi's ``yes_price``
 #: already prices the event's yes side, so the projection is the identity and it
@@ -122,15 +141,21 @@ _POLYMARKET_COLUMNS: Mapping[str, str] = {
 
 _LAYERS: Mapping[str, Mapping[str, str]] = {
     KALSHI_LAYER: _KALSHI_COLUMNS,
+    KALSHI_OWN_LAYER: _KALSHI_COLUMNS,
     POLYMARKET_STANDARD_LAYER: _POLYMARKET_COLUMNS,
     POLYMARKET_NEG_RISK_LAYER: _POLYMARKET_COLUMNS,
 }
 
 #: The layer's own time column and the unit it is stored in. Kalshi archives a
 #: timezone-aware microsecond timestamp; the cleaned Polymarket layers archive
-#: Unix epoch seconds, which are never milliseconds.
+#: Unix epoch seconds, which are never milliseconds. Our own Kalshi capture is
+#: written in the vendor archive's own column layout and unit, so both Kalshi
+#: layers are read through one path: the alternative is a second time
+#: interpretation for the same venue, which is how a five-decade shift enters
+#: silently.
 _LAYER_TIME: Mapping[str, tuple[str, str]] = {
     KALSHI_LAYER: ("created_time", "timestamp_us_utc"),
+    KALSHI_OWN_LAYER: ("created_time", "timestamp_us_utc"),
     POLYMARKET_STANDARD_LAYER: ("block_timestamp", "epoch_seconds"),
     POLYMARKET_NEG_RISK_LAYER: ("block_timestamp", "epoch_seconds"),
 }
@@ -138,15 +163,22 @@ _LAYER_TIME: Mapping[str, tuple[str, str]] = {
 #: Documented archive column to canonical field, per layer. The query projects
 #: each canonical field's column under the name in the first position, so a
 #: renamed shard still reaches a mapper reading the documented names.
+#:
+#: Both Kalshi layers share one projection because this repository writes its own
+#: capture in the vendor archive's own column names and layout. Two spellings of
+#: one venue's schema is the thing that drifts.
+_KALSHI_TRADE_PROJECTION: tuple[tuple[str, str], ...] = (
+    ("trade_id", "trade_id"),
+    ("ticker", "contract_id"),
+    ("count", "size"),
+    ("yes_price", "yes_price"),
+    ("no_price", "no_price"),
+    ("taker_side", "direction"),
+)
+
 _PROJECTIONS: Mapping[str, tuple[tuple[str, str], ...]] = {
-    KALSHI_LAYER: (
-        ("trade_id", "trade_id"),
-        ("ticker", "contract_id"),
-        ("count", "size"),
-        ("yes_price", "yes_price"),
-        ("no_price", "no_price"),
-        ("taker_side", "direction"),
-    ),
+    KALSHI_LAYER: _KALSHI_TRADE_PROJECTION,
+    KALSHI_OWN_LAYER: _KALSHI_TRADE_PROJECTION,
     POLYMARKET_STANDARD_LAYER: (
         ("condition_id", "contract_id"),
         ("asset_id", "token_id"),
@@ -165,6 +197,7 @@ _PROJECTIONS[POLYMARKET_NEG_RISK_LAYER] = _PROJECTIONS[POLYMARKET_STANDARD_LAYER
 #: price or no source time is not a row this module can report.
 _REQUIRED_FIELDS: Mapping[str, tuple[str, ...]] = {
     KALSHI_LAYER: ("contract_id", "size", "yes_price", "no_price"),
+    KALSHI_OWN_LAYER: ("contract_id", "size", "yes_price", "no_price"),
     POLYMARKET_STANDARD_LAYER: ("contract_id", "outcome_seq", "price"),
 }
 _REQUIRED_FIELDS[POLYMARKET_NEG_RISK_LAYER] = _REQUIRED_FIELDS[POLYMARKET_STANDARD_LAYER]
@@ -314,6 +347,7 @@ def kalshi_trade_from_row(
     shard_relative_path: str,
     row_position: int,
     venue: str = KALSHI_VENUE,
+    layer: str = KALSHI_LAYER,
 ) -> HistoricalTrade:
     """One Kalshi archive row as a bounded historical trade.
 
@@ -326,6 +360,12 @@ def kalshi_trade_from_row(
     crossed to: buying yes moves the event axis up, buying no moves it down. A row
     whose side is neither leaves the direction null rather than defaulting, since
     an unreadable side is not a flat signal.
+
+    ``layer`` names the layer the row was read from, and it reaches
+    ``provenance.source``. It defaults to the vendor layer so an existing caller
+    that has only one Kalshi layer in hand is unchanged, and a caller reading this
+    repository's own capture passes its own name so the two provenances stay
+    distinguishable in a sealed dataset.
     """
     yes_cents = _required_int(record, "yes_price")
     no_cents = _required_int(record, "no_price")
@@ -377,7 +417,7 @@ def kalshi_trade_from_row(
         provenance=Provenance(
             raw_hash=shard_hash,
             record_id=row_occurrence_id(shard_hash, row_position),
-            source=f"archive.{KALSHI_LAYER}",
+            source=f"archive.{layer}",
             schema_version=_SCHEMA_VERSION,
         ),
         trade_id=trade_id if isinstance(trade_id, str) and trade_id else None,
@@ -585,7 +625,7 @@ def extract_trades(
     if end < start:
         raise ValueError(f"window_end {end} precedes window_start {start}")
     mapping = _mapping_for(layer, column_map)
-    venue = KALSHI_VENUE if layer == KALSHI_LAYER else POLYMARKET_VENUE
+    venue = KALSHI_VENUE if layer in KALSHI_LAYERS else POLYMARKET_VENUE
     # The archive name the projected source instant is keyed by, so one mapper
     # serves a real shard and a renamed synthetic one alike.
     time_column = _LAYER_TIME[layer][0]
@@ -1126,7 +1166,7 @@ def _time_epoch(layer: str, mapping: Mapping[str, str]) -> str:
     lost to integer division.
     """
     column = _quote_identifier(mapping["time"])
-    if layer == KALSHI_LAYER:
+    if layer in KALSHI_LAYERS:
         return f"epoch_us({column})"
     return f"CAST({column} AS BIGINT)"
 
@@ -1172,13 +1212,14 @@ def _trade_from_record(
     arguments to the other's mapper would be a ``TypeError`` at the first row
     rather than a wrong answer, so the dispatch is explicit.
     """
-    if layer == KALSHI_LAYER:
+    if layer in KALSHI_LAYERS:
         return kalshi_trade_from_row(
             record,
             shard_hash=shard_hash,
             shard_relative_path=shard_relative_path,
             row_position=row_position,
             venue=venue,
+            layer=layer,
         )
     return polymarket_trade_from_row(
         record,

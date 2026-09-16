@@ -701,6 +701,8 @@ def test_real_configuration_declares_the_documented_layers() -> None:
     assert set(by_name) == {
         "kalshi_trades",
         "kalshi_markets",
+        "kalshi_own_trades",
+        "kalshi_own_markets",
         "polymarket_orderfilled",
         "polymarket_daily_aligned",
         "polymarket_daily_aligned_multi",
@@ -710,6 +712,24 @@ def test_real_configuration_declares_the_documented_layers() -> None:
     assert by_name["kalshi_trades"].path_pattern == "kalshi-trades/trades-*.parquet"
     assert by_name["kalshi_trades"].time_column == "created_time"
     assert by_name["kalshi_trades"].time_unit == "timestamp_us_utc"
+    # Our own capture is its own layer with its own root, producer and licence. It is
+    # not aliased onto the vendor layer, because the two are different input classes
+    # and a reader has to be able to see which one a result came from.
+    assert by_name["kalshi_own_trades"].path_pattern == "kalshi-own/trades/trades-*.parquet"
+    assert by_name["kalshi_own_markets"].path_pattern == "kalshi-own/markets/markets-*.parquet"
+    assert by_name["kalshi_own_trades"].input_class == "locally_captured_public_data"
+    assert by_name["kalshi_own_markets"].input_class == "locally_captured_public_data"
+    assert by_name["kalshi_own_trades"].producer != by_name["kalshi_trades"].producer
+    assert by_name["kalshi_own_markets"].producer != by_name["kalshi_markets"].producer
+    # Both Kalshi layers are read through one time unit and one layout, so the
+    # captured layer cannot drift out of the extraction path silently.
+    assert by_name["kalshi_own_trades"].time_column == by_name["kalshi_trades"].time_column
+    assert by_name["kalshi_own_trades"].time_unit == by_name["kalshi_trades"].time_unit
+    assert (
+        by_name["kalshi_own_markets"].time_unit
+        == by_name["kalshi_markets"].time_unit
+        == "timestamp_us_utc"
+    )
     assert by_name["polymarket_daily_aligned"].time_column == "block_timestamp"
     assert by_name["polymarket_daily_aligned"].time_unit == "epoch_seconds"
     assert by_name["polymarket_ctf"].time_column is None

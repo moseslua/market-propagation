@@ -106,6 +106,35 @@ PATH=/usr/local/bin:/usr/bin:/bin
 # clock dates the run rather than the evidence and no timezone conversion applies.
 41 6 * * * cd "$MARKET_PROPAGATION_ROOT" && mkdir -p logs rules/captures && "$MARKET_PROPAGATION_UV" run --frozen market-propagation capture-rules --output rules/captures/latest-capture.json >> logs/rules-capture.log 2>&1
 
+# --- Monthly market and trade capture ---------------------------------------
+#
+# The venue's live partition retains roughly three months. A contract that leaves
+# it is served from /historical/markets, but the live listing is what carries a
+# contract's published rule text beside its lifecycle, so a window not captured
+# while it is still live can never be acquired again. That is why this runs on a
+# cadence and not on demand: extraction that starts late loses its early windows
+# permanently.
+#
+# The window below is deliberately wider than the cadence. A monthly run covers
+# the 35 days ending on the day it runs, so a missed month is absorbed by the next
+# run and the only way to lose a window is to miss three consecutive months, which
+# is the documented retention. The window end is not the retention boundary itself:
+# the venue's cutoff advances as markets settle, so a window ending exactly at the
+# boundary can straddle it, and the command records the partition it read through
+# rather than assuming one.
+#
+# Writes its shards under data/external/kalshi-own/, which is a declared input
+# layer of this repository's own capture. It is a separate root from
+# data/external/kalshi-trades/ on purpose: that directory is a third-party
+# CC-BY-4.0 dataset, and writing our rows there would attribute our provenance to
+# their licence. Appends a transcript to logs/market-capture.log. Exit 0 means a
+# shard was written; 2 means the listing was refused or incomplete, or the market
+# layer could not be resolved for the window.
+#
+# 06:47 host time, monthly on the 1st. The window is computed in UTC from the run
+# date, so the host clock positions the run and no timezone conversion applies.
+47 6 1 * * cd "$MARKET_PROPAGATION_ROOT" && mkdir -p logs && "$MARKET_PROPAGATION_UV" run --frozen market-propagation capture-markets --window-start "$(date -u -v-35d +\%Y-\%m-\%dT00:00:00+00:00 2>/dev/null || date -u -d '35 days ago' +\%Y-\%m-\%dT00:00:00+00:00)" --window-end "$(date -u +\%Y-\%m-\%dT00:00:00+00:00)" --output data/external/kalshi-own/captures/latest-capture.json >> logs/market-capture.log 2>&1
+
 # --- Release-window capture template, NOT enabled ---------------------------
 #
 # Nothing below is active. The entries above stay active when you uncomment a

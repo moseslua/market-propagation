@@ -581,6 +581,8 @@ def write_kalshi_archive(root: pathlib.Path, ticker: str = KALSHI_TICKER) -> pat
 ARCHIVE_SHARDS: tuple[tuple[str, str, str | None], ...] = (
     ("kalshi_trades", "kalshi-trades/trades-0000.parquet", "created_time"),
     ("kalshi_markets", "kalshi-trades/markets-0000.parquet", "created_time"),
+    ("kalshi_own_markets", "kalshi-own/markets/markets-0000.parquet", "created_time"),
+    ("kalshi_own_trades", "kalshi-own/trades/trades-0000.parquet", "created_time"),
     ("polymarket_orderfilled", "polymarket-v1/OrderFilled/fills-0000.parquet", "block_timestamp"),
     (
         "polymarket_daily_aligned",
@@ -987,8 +989,8 @@ def test_inventory_external_reads_the_default_configuration(
 ):
     """An omitted ``--config`` reaches the pipeline's own configuration file.
 
-    The default declares seven layers, all of them absent from this synthetic root, so
-    the artifact naming exactly those seven is how the default is observed rather than
+    The default declares nine layers, all of them absent from this synthetic root, so
+    the artifact naming exactly those nine is how the default is observed rather than
     assumed.
     """
     monkeypatch.chdir(REPO_ROOT)
@@ -1006,7 +1008,7 @@ def test_inventory_external_reads_the_default_configuration(
     result = stdout_json(capsys)
 
     assert code == 2
-    assert len(result["layers"]) == 7
+    assert len(result["layers"]) == 9
     assert "kalshi_trades" in result["layers_missing"]
 
 
