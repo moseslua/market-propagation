@@ -1,0 +1,222 @@
+# Study specification, v2 freeze.
+#
+# This is the analysis specification the v2 run is measured against. It fixes the
+# source-time clock, the estimands, the observation caps, the feature definitions
+# and the ladder the propagation rung is compared on, before any result is read.
+#
+# The v1 files (`configs/study_v1.yaml`, `configs/cohort.yaml`,
+# `configs/event_windows.yaml`, `configs/external_history_v1.yaml`) stay frozen and
+# unchanged beside this file. This file does not edit them; it declares the choices
+# the v2 run makes explicit.
+
+config_version: study_v2
+scope: >-
+  Source-time transaction measurement of a release's own-market response and of
+  conditional predictive propagation across policy-rate contracts, with every
+  boundary, cap and predicate declared before the fit.
+
+# The clock. `tau` is the forecast origin, `L` the donor lag guard and `H` the
+# forward target horizon. All three are declared here and are read from this file,
+# not restated in code.
+clock:
+  mode: source
+  basis: venue_recorded_transaction_time
+  # Source alignment is retrospective. It is not evidence of what a live
+  # participant knew, and no result here is a claim about live information.
+  retrospective_alignment_is_a_limitation: true
+  forecast_origin_seconds: 300
+  lag_guard_seconds: 60
+  future_horizon_seconds: 300
+  # A record's own receipt is unknown for archived transactions, so no usable
+  # interval is invented and `usable` stays unidentifiable.
+  assumed_delay_seconds: null
+  permitted_modes:
+    - source
+    - usable
+    - assumed_delay
+
+# Observation caps. Each is a transaction-recency cap, not feed delay and not quote
+# freshness, and each is applied to its own leg.
+caps:
+  anchor_max_age_seconds: 120
+  target_max_age_seconds: 120
+  donor_max_age_seconds: 120
+  pre_window_seconds: 1800
+  post_window_seconds: 3600
+
+estimands:
+  # The release's own-market absorption, measured on the sealed response panel.
+  absorption: >-
+    p_i(last valid trade at or before release_time + h) minus
+    p_i(last valid trade strictly before release_time), per contract i and horizon h
+  # The propagation target, measured on the sealed forecast panel. It is the
+  # five-to-ten-minute increment and not the first five minutes' absorption.
+  network_target: >-
+    p_i(last trade at or before tau + H) minus p_i(last trade at or before tau)
+  # The donor's lagged return, measured from the release and stopped one guard
+  # before the target window opens, so the same prints never inform both sides.
+  neighbor_lag: >-
+    p_j(last trade at or before tau - L) minus p_j(last trade strictly before release_time)
+  # The recipient's own pre-origin increment, over a window of the same declared
+  # length as the target and ending at the origin. It is the own rung's
+  # autoregressive term and it is the recipient's own past, never another
+  # contract's future.
+  own_lag: >-
+    p_i(last trade at or before tau) minus
+    p_i(last trade at or before tau - H)
+
+declared_horizons_seconds:
+  - 60
+  - 300
+  - 900
+  - 1800
+  - 3600
+primary_horizon_seconds: 300
+
+cohort:
+  # The releases and the contract families are declared in the v2 cohort file. This
+  # file names it rather than repeating it, so the two cannot drift apart.
+  file: configs/cohort_v2.yaml
+  windows_file: configs/event_windows_v2.yaml
+  graph_file: configs/neighbor_graph_v2.yaml
+  families:
+    - cpi
+    - employment
+
+features:
+  # The ladder's declared feature columns. Each kind's set contains the previous
+  # kind's set, so the ladder is genuinely nested and the neighbour terms can only
+  # earn their place by adding admissible lagged information.
+  ladder_file_owner: market_propagation.models
+  column_map:
+    event_id: event_id
+    cluster_id: cluster_id
+    contract_id: receiver_contract_id
+    event_time: release_time
+    prediction_time: forecast_origin
+    max_input_available_time: max_input_source_time
+    target: target
+    current_price: recipient_anchor
+    own_lag: own_lag
+    neighbor_lag: neighbor_lag
+  # The surprise is read from a validated point-in-time expectation and never from
+  # a post-release quantity. No such source exists on this checkout, so the news and
+  # network rungs are blocked with the missing columns named.
+  surprise_statistic_by_family:
+    cpi: cpi_headline_sa_mom_pct
+    employment: payrolls_change_thousands
+  expectation_source: null
+  expectation_source_status: absent
+
+model:
+  model_kind: nested_ladder
+  kinds:
+    - no_change
+    - own
+    - news
+    - network
+  baseline_kind: news
+  candidate_kind: network
+  loss: mae
+  minimum_mae_gain: 0.005
+  ridge_alphas:
+    - 0.001
+    - 0.01
+    - 0.1
+    - 1.0
+    - 10.0
+
+evaluation:
+  split_authority: market_propagation.evaluation.chronological_splits
+  unit_of_independence: release_cluster
+  train_fraction: 0.6
+  validation_fraction: 0.2
+  embargo_seconds: null
+  bootstrap_samples: 200
+  coverage: 0.95
+
+randomness:
+  seed: 20260913
+  resampling_seed: 20260914
+
+calibration:
+  # Measured on the simulated transaction path. The rule's own declared parameters are
+  # unchanged from this file; what is set explicitly here is the sample the rule is
+  # measured on, because the declared 60/20/20 split needs enough held-out releases for
+  # a release-clustered bound to mean anything.
+  status: measured
+  verdict: inconclusive
+  verdict_is_constrained_by: >-
+    two of the ten declared null scenarios cannot produce a comparison on this path and
+    will not at any repetition count, so the family's simultaneous bound is not
+    certifiable for the whole declaration as written. Every scenario that can run
+    passes its requirement, and the verdict names the unmeasurable two rather than
+    passing over them.
+  certificate: data/calibration/calibration_certificate.json
+  registry: data/registry/rule_calibration.sqlite3
+  entry_point: market-propagation calibrate-rule
+  repetitions_per_primary_scenario: 200
+  releases_per_repetition: 120
+  releases_per_repetition_why: >-
+    the split is taken over release clusters. At 24 releases the held-out fold held two
+    or three releases, the null rate and the power both reflected that fold rather than
+    the rule, and the run reported a failure that did not survive a wider fold. 120
+    releases leaves twelve or thirteen, and the two arms separate completely.
+  simultaneous_null_bounds:
+    method: clopper-pearson one-sided, level divided across the estimable nulls
+    level: 0.99375
+    null_scenarios_declared: 10
+    null_scenarios_estimable: 8
+  measured:
+    null_false_positive_rate:
+      repetitions: 200
+      promoted: 0
+      one_sided_upper_bound: 0.0251
+      ceiling: 0.05
+      scenarios:
+        - coarse_sampling
+        - dropped_messages
+        - heterogeneous_sensitivity
+        - later_reversal
+        - omitted_shock
+        - opposing_sign
+        - rule_mismatch
+        - shared_news_delay
+    recovery_power:
+      scenario: communication
+      repetitions: 200
+      promoted: 196
+      rate: 0.98
+      one_sided_lower_bound: 0.9548
+      target: 0.8
+  not_estimable:
+    # Declared here rather than dropped, because a null that was silently omitted from
+    # the family would widen the bound the surviving nulls are held to and read as
+    # evidence it never supplied.
+    - scenario: resolution_pause
+      reason: >-
+        the scenario halts the venue across its own measured window by construction, so
+        the comparison is never produced; 200 of 200 repetitions blocked on a
+        not-run comparison
+    - scenario: spread_only
+      reason: >-
+        the scenario leaves midpoints unmoved by construction, so no row is ever
+        complete; 200 of 200 repetitions blocked on a not-run comparison
+  superseded:
+    call: network_falsification
+    n_events: 10
+    repetitions: 48
+    seed: 20260915
+    why_insufficient: >-
+      it counts a gain-threshold event on the quote/simulator path rather than the
+      declared transaction observation process, and at 48 repetitions the one-sided
+      bound cannot separate a 0.05 ceiling from a 0.80 target.
+
+registered_estimation:
+  spec_status: development
+  confirmatory_estimation_permitted: false
+  why: >-
+    no attested historical rule vintage exists for any candidate contract on this
+    archive, and no simultaneously-live matched donor and receiver pair has been
+    found, so the primary graph is blocked and no confirmatory estimate is
+    permitted.

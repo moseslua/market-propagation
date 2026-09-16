@@ -1,0 +1,469 @@
+config_version: study_a_absorption_v1
+study_id: study_a_absorption
+title: Release absorption in threshold-contract transaction prices
+
+# This file declares a design, not a result. It is written after the v2 freeze and
+# beside it: it reads `configs/study_v2.yaml`, `configs/event_windows_v2.yaml`,
+# `configs/cohort_v2.yaml` and `configs/neighbor_graph_v2.yaml` and declares
+# nothing that contradicts them. Where a number appears below it is a measured
+# count from `reports/study_execution_status.md`, named as measured, never an
+# estimate produced by this design.
+#
+# The question this study asks is deliberately narrow: how fast does a scheduled
+# macro release enter the transaction prices of threshold contracts whose payoff
+# depends on it? It asks nothing about surprise, nothing about transmission
+# between contracts, and nothing about what a live participant knew.
+
+scope: >-
+  Source-time transaction measurement of one contract's own price response to a
+  scheduled macro release, per contract and release, at prespecified horizons. The
+  unit is contract x release. Neighbour information, the news vector, cross-venue
+  matching and cross-meeting structure are all outside this file; they belong to
+  studies B and C.
+
+status:
+  # Read this block first. It is the honest state of the study on this checkout.
+  runnable_today: exploratory_descriptive_only
+  evidence_tier_permitted_today: descriptive
+  confirmatory_estimation_permitted: false
+  blocker: >-
+    no candidate contract carries an attested rule vintage. `rule_verified_pairs` is
+    0 of 785, so all 3,925 panel rows carry `rule_version_unknown` and are masked.
+    The only rows that can be measured today are those whose *only* recorded
+    exclusion reasons are rule reasons; that set is 47 rows, and fitting it is the
+    plan's sanctioned exploratory branch rather than this study's primary estimand.
+  measured_now:
+    declared_pairs: 785
+    panel_rows: 3925
+    rule_verified_pairs: 0
+    valid_rows: 0
+    pairs_with_both_legs_observed: 136
+    rows_measurable_rule_reasons_only: 47
+    rows_with_both_legs_and_an_observation_exclusion: 89
+    rows_without_both_legs: 3789
+    exploratory_fit_cpi: "blocked: 0 design rows; the split is rejected because it needs at least 3 releases and got 2 with a design row"
+    exploratory_fit_employment: "complete but degenerate: 21 design rows across 3 releases, 1 release held out, so no release-level interval is identified"
+  measured_where: reports/study_execution_status.md
+  why_this_is_the_state: >-
+    the masking is a documentation gap in the rule-vintage record, not a property of
+    the venue and not a trading-session fact. The structural probe measures how large
+    that gap is: 623 edges are structurally admissible under the declared calendar,
+    predicates, liveness and window rules and every one is withheld by the
+    rule-vintage requirement alone.
+
+unit_of_analysis: contract_x_release
+unit_key_fields:
+  - contract_id
+  - event_id
+  # One release's contracts share a shock and an error component. The unit is the
+  # row, but the *independent* unit for inference is the release; the two are named
+  # separately here so a resampling rule cannot confuse them.
+  - cluster_id
+
+clock:
+  # Inherited, not redeclared. The v2 clock is the authority and this file names it
+  # rather than repeating its numbers, so the two cannot drift apart.
+  authority: configs/study_v2.yaml
+  windows_authority: configs/event_windows_v2.yaml
+  mode: source
+  basis: venue_recorded_transaction_time
+  reference_point: scheduled_release_time
+  observed_publication_time_used_when: available_from_archived_payload
+  timezone_source: America/New_York
+  timezone_storage: UTC
+  fixed_utc_offset_allowed: false
+  horizons_control_instant: release_time
+  retrospective_alignment_is_a_limitation: true
+  reason: >-
+    archived transactions carry no receipt, so `usable_time` is null on every row and
+    `usable` is unidentifiable. Source alignment is the only defensible clock, and it
+    is retrospective: no result in this file is a claim about what a live participant
+    knew at the instant the venue recorded.
+
+horizons:
+  # The five declared horizons are one curve, reported together. The primary horizon
+  # is one pre-declared member of that curve, never the smallest p-value among five.
+  declared_horizons_seconds:
+    - 60
+    - 300
+    - 900
+    - 1800
+    - 3600
+  primary_horizon_seconds: 300
+  horizon_units: seconds_after_scheduled_release_time
+  restriction_reasons:
+    - id: horizons_limited_to_actual_data_resolution
+      reason: >-
+        an endpoint is the last valid print at or before `release_time + h`; a horizon
+        finer than the archive's observed print spacing would measure the spacing
+        rather than the response
+    - id: longer_intraday_and_daily_responses_are_separate_outcomes
+      reason: >-
+        900/1800/3600 s are inside the same session as the primary horizon and are the
+        same curve. A daily or settlement response is a different outcome with a
+        different contamination profile and is not folded into this curve
+    - id: prospective_sub_second_horizons_excluded_until_clock_audit_passes
+      reason: >-
+        no clock audit has established sub-second resolution on the transaction path,
+        so no sub-second horizon is declared
+
+outcome:
+  primary:
+    id: absorption
+    symbol: R(e,i,h)
+    definition: >-
+      p_i(last valid trade at or before release_time + h) minus p_i(last valid trade
+      strictly before release_time), for contract i, release e, horizon h
+    units: absolute_probability_units_0_1
+    smallest_scientifically_relevant_response: 0.01
+    smallest_relevant_response_reason: >-
+      inherited from `configs/study_v1.yaml` thresholds, where 0.01 probability units
+      is the declared smallest relevant response. It is a design choice fixed before
+      fitting, not a power-derived number, and no power calculation has been run at
+      this event count. A claim that the response exceeds it requires the lower bound
+      to exceed it, not a point estimate.
+  secondary:
+    - id: absorption_curve_shape
+      definition: the same quantity at the four non-primary declared horizons
+      relation_to_primary: same_curve_reported_with_simultaneous_bands
+    - id: family_heterogeneity
+      definition: the primary contrast estimated separately for cpi and employment
+      relation_to_primary: prespecified_secondary_family_never_pooled_with_cpi
+  not_an_outcome_here:
+    - id: surprise_conditional_response
+      reason: no validated point-in-time expectation source exists; see dependencies
+    - id: propagation_to_other_contracts
+      reason: that is study C, and its unit and treatment differ
+
+treatment:
+  symbol: X
+  kind: event_time_indicator
+  definition: >-
+    a scheduled macro release occurred at `release_time`. There is no continuous
+    treatment and no intensity: the release is a date on a public calendar, and the
+    contrast is between the price before it and the price after it.
+  assigned_by: official_published_release_calendar
+  endogenous_timing: false
+  endogenous_timing_reason: >-
+    the instants come from the BLS release calendars read for the v1 cohort, which are
+    announced in advance. Timing is therefore scheduled rather than chosen in response
+    to prices, which is what makes an event-time contrast interpretable at all.
+  what_it_does_not_identify: >-
+    a scheduled-instant contrast cannot separate "a scheduled macro release landed at
+    this minute" from "this release's particular content landed". Separating them
+    needs the pre-release expectation vector, which is absent, so this study makes no
+    news claim. The placebo design in `reports/preregistration_studies.md` is what
+    tests whether the timing convention alone can manufacture a response.
+
+sample:
+  id: declared_release_contract_grid
+  declared_universe: >-
+    a contract is a candidate for one release when its series is one of the four
+    declared policy series (FED, FEDDECISION, KXFED, KXFEDDECISION) and its own
+    recorded listing interval covers the release instant
+  universe_selector: declared_listing_grid
+  activity_used_to_select: false
+  universe_authority: configs/cohort_v2.yaml
+  denominator: >-
+    the declared grid is the denominator. A declared pair that never traded keeps its
+    masked row, so a missing cell stays in the grid and cannot fall out of the
+    observed fraction. 697 of 785 declared pairs never traded in the window.
+  measured:
+    declared_policy_series: 4
+    candidate_contracts: 689
+    declared_release_contract_pairs: 785
+    declared_pairs_that_never_traded: 697
+    panel_rows: 3925
+    extracted_trades: 163795
+    extraction_bounded: false
+  receiver_predicate:
+    required: true
+    parser: market_propagation.ingest.policy_predicates
+    reason: >-
+      a contract is a receiver only when the venue's own archived text states a
+      readable policy-rate payout. Ticker resemblance is not settlement semantics, and
+      the declared readable forms are listed in `configs/neighbor_graph_v2.yaml`.
+
+exclusions:
+  # Every exclusion is a mask written in place with a named reason. A row is never
+  # dropped, and a masked measurement is null, never zero.
+  missing_is_null: true
+  observed_zero_is_evidence: true
+  fill_forward_forbidden: true
+  carry_anchor_into_target_forbidden: true
+  mask_reasons:
+    - code: rule_version_unknown
+      measured_rows: 3925
+      why: no contract carries an attested rule vintage, so no row is admissible
+    - code: rule_evidence_missing
+      measured_rows: reported_per_row_in_flags_json
+      why: the declared rule evidence source carries no per-contract record
+    - code: availability_unidentifiable
+      why: an archive row has no receipt, so a `usable` fold establishes no interval
+    - code: missing_baseline
+      why: no valid print strictly before the release, so there is no `s_minus` and the
+        response is not defined
+    - code: baseline_beyond_cap
+      why: the last print before the release is older than the declared 120 s
+        anchor_max_age, so it is stale rather than absent
+    - code: no_post_release_trade
+      why: the contract never traded again inside the window. The baseline is not
+        carried forward into the endpoint, because a carried anchor would report
+        absent data as a measured zero
+    - code: endpoint_beyond_cap
+      why: the last print at or before `release_time + h` is older than the declared
+        120 s target_max_age
+    - code: contract_closed_before_release
+      why: >-
+        the venue's own lifecycle closed the contract first, so no post-release print
+        exists to measure. Peer feasibility observation recorded on 2026-09-13, and
+        treated as feasibility evidence rather than a result, is that sampled direct
+        contracts closed at 08:25 ET for the CPI series and 08:29 ET for payrolls,
+        before the 08:30 ET release
+    - code: ambiguous_outcome_axis
+      why: the event axis cannot be resolved, so the price is not a probability
+  contamination_stop:
+    - market_close_summarises_a_regional_venue_day
+    - scheduled_maintenance
+    - data_feed_outage
+  contamination_stop_reason: >-
+    each of the three summarises the venue's own day or halts it, and none is a
+    property of the release. A window overlapping one is stopped rather than shortened.
+  tie_handling:
+    ties_grouped_before_features: true
+    tie_value: unweighted_mean_of_event_axis_prices
+    reason: >-
+      prints sharing one recorded instant are one observation of the price, and
+      averaging them is declared rather than picking the first or last.
+
+primary_specification:
+  id: cpi_primary_absorption_at_300s
+  # A primary specification is never changed after results are seen. Changing it
+  # creates a new config_version, consumes a new locked-test reservation, and cannot
+  # be reported as this study's primary result.
+  immutable_after_results: true
+  status: not_runnable_today
+  status_reason: rule_version_unknown masks every row; 0 of 785 pairs is rule-verified
+  family: cpi
+  family_authority: >-
+    CPI is the primary confirmatory family and employment the prespecified secondary
+    family. Unavailable CPI does not silently promote employment.
+  horizon_seconds: 300
+  estimand: mean absorption over the declared receiver set of each release, averaged
+    with equal weight across releases
+  weighting: >-
+    contracts within a release are averaged with equal weight and releases are
+    averaged with equal weight, so a release with many listed strikes does not
+    dominate one with few
+  null_hypothesis: mean absorption at 300 s equals zero
+  decision_rule: >-
+    report the point estimate and a one-sided 95 % release-clustered lower bound. A
+    claim that the response is positive requires the bound above zero. A claim that it
+    exceeds the declared smallest relevant response additionally requires the bound
+    above 0.01 probability units. The estimate and a two-sided interval are reported
+    regardless of the decision.
+  no_post_result_threshold_reduction: true
+  intermediate_state_forbidden: >-
+    a partially admissible panel is reported as a partial count with its reasons, never
+    as a primary estimate.
+
+exploratory_namespace:
+  # Everything not in the primary specification lives here and is labelled as such in
+  # every artifact it reaches. It can never be promoted to the primary result.
+  label: exploratory
+  members:
+    - id: rule_reason_only_panel
+      what: the plan's sanctioned exploratory candidate panel, restricted to the 47
+        rows whose only recorded reasons are rule reasons
+      status: run
+      measured_result: >-
+        cpi blocked with 0 design rows; employment complete but degenerate with 21
+        design rows over 3 releases and 1 release held out
+      claim_ceiling: >-
+        measures the price change of contracts very likely to be the intended predicate
+        but whose rule vintage is unverified. It makes no news claim, no propagation
+        claim, and is not a substitute for the primary panel
+    - id: age_cap_sensitivity
+      what: re-estimate at anchor/endpoint age caps other than 120 s
+      status: not_run
+      not_run_reason: no valid rows, so no age-cap-sensitive estimate exists
+    - id: endpoint_and_tie_envelopes
+      what: the endpoint and tie envelopes carried on every masked row
+      status: unexploited
+    - id: reversed_direction
+      what: the pre-release to pre-release contrast, as a diagnostic
+      status: not_run
+      not_run_reason: no fitted primary estimate
+    - id: leave_one_release_out
+      what: the primary contrast with each release dropped in turn
+      status: not_run
+      not_run_reason: no fitted primary estimate
+
+multiple_testing:
+  primary_family_size: 1
+  primary_correction: none_required_for_a_single_declared_contrast
+  declared_curve_family:
+    member_count: 5
+    correction: bonferroni_simultaneous_bands
+    level_rule: >-
+      one minus (alpha divided by the number of declared horizons), matching the
+      level/m convention the rule calibration already uses
+    why: >-
+      the five horizons are one curve and are reported together. Banding them
+      separately would let the widest single-horizon interval stand in for the curve.
+  secondary_family:
+    member_count: 1
+    correction: bonferroni_over_declared_families
+    level: 0.975
+    why: >-
+      employment is a prespecified secondary family, so the two family contrasts are
+      corrected against each other rather than treated as one test
+  exploratory_correction: benjamini_hochberg
+  exploratory_q: 0.05
+  exploratory_reason: >-
+    the exploratory set is not a fixed small family and is expected to grow. FDR
+    control is declared for it so an exploratory discovery rate is not read as a
+    family-wise claim.
+  pseudo_replication_prohibited: true
+  pseudo_replication_note: >-
+    many contracts from one release are dependent observations of that one release.
+    Counting them as independent trials inflates precision and is prohibited.
+
+clustering:
+  level: release
+  cluster_id_field: cluster_id
+  cluster_count_expected: 10
+  clusters_per_family: 5
+  authority: >-
+    `configs/study_v2.yaml` declares `unit_of_independence: release_cluster`, and
+    `configs/study_v1.yaml` clusters the response estimator by release date. This file
+    inherits both rather than choosing a level.
+  few_cluster_handling: >-
+    report broad intervals and a finite-sample sensitivity; below 3 releases with a
+    design row no interval is reported at all. The exploratory fit already hit this:
+    the cpi family's split was rejected because it needs at least 3 releases and got 2.
+  contract_level_dependence_note: >-
+    one contract can be a receiver for more than one release, so releases are not
+    fully independent of each other either. This is handled by a declared sample
+    restriction in the robustness namespace, not by changing the clustering level.
+
+bootstrap:
+  unit: whole_release
+  resampling: with_replacement_over_release_clusters
+  draws_per_interval: 200
+  seed: 20260913
+  resampling_seed: 20260914
+  seed_authority: configs/study_v2.yaml
+  keep_intact_within_a_drawn_release: every contract and every horizon of that release
+  prohibited_units:
+    - iid_resampling_of_individual_quote_snapshots
+    - row_level_bootstrap_within_a_release
+    - contract_as_an_independent_unit
+  why: >-
+    a resample must preserve the release-level dependence that the release carries,
+    including its shared shock and its cross-horizon path. Drawing rows or contracts
+    inside one release breaks exactly that structure.
+  deterministic_requirement: identical_seed_reproduces_identical_output
+  row_order_invariance_required: true
+
+dependencies:
+  # Each dependency is named with what it is, whether it exists, and the measured
+  # value where one has been measured. `absent` and `zero` are different states.
+  - id: declared_listing_grid
+    provides: the candidate universe and the denominator
+    status: present
+    measured: 785 declared pairs, 697 without any window trade
+    evidence: reports/study_execution_status.md
+  - id: rule_vintage_record
+    provides: admissibility of every panel row
+    status: absent
+    measured: 0 of 785 pairs rule-verified; 0 of 3,925 rows valid
+    evidence: reports/contract_rule_registry.json, reports/source_feasibility.md
+    why_it_is_absent: >-
+      the registry is a specification document (`status: frozen_local_unregistered`)
+      and carries no per-contract rule record. The venue's own historical endpoint
+      returns rule text, but that is text read now: its `updated_time` is months after
+      settlement, so it does not bound an in-force interval. Settlement outcomes,
+      current rule text and a contract's own listing window are all declared
+      inadmissible substitutes.
+  - id: transaction_panel_with_both_legs
+    provides: a measurable response
+    status: partially_present
+    measured: 136 of 785 pairs have both legs observed; 43 pairs are pre-event
+      observed and 81 endpoint observed
+    evidence: reports/study_execution_status.md
+  - id: point_in_time_expectation_source
+    provides: the surprise-conditional secondary outcome
+    status: absent
+    measured: pre-release captures exist for 9 of 10 releases and none is bound as a
+      validated expectation record; `cpi_2025_01` was read in full
+    evidence: reports/source_feasibility.md
+    effect_on_this_study: >-
+      nothing in the primary or secondary outcomes declared above depends on it. It
+      gates only the not-an-outcome-here surprise slope.
+  - id: transaction_tape_calibration
+    provides: the observed false-positive and recovery behaviour of the decision rule
+    status: measured
+    verdict: inconclusive
+    measured: 8 estimable nulls promoted in 0 of 200 repetitions each, one-sided upper
+      bound 0.0251 at simultaneous level 0.99375 against a 0.05 ceiling; recovery 196
+      of 200, lower bound 0.9548 against a 0.80 target; `resolution_pause` and
+      `spread_only` emit no comparison row by construction
+    evidence: configs/study_v2.yaml, data/calibration/calibration_certificate.json
+    why_it_matters_here: >-
+      it calibrates the rule on a synthetic process only. It is not evidence about any
+      real contract, and it does not unblock the rule-vintage dependency above.
+
+claim_limits:
+  may_claim:
+    - the declared grid is the denominator and its missing cells are counted
+    - the transaction-price change of a contract around a scheduled release, at the
+      declared horizons, for rows whose only recorded faults are rule reasons, labelled
+      exploratory
+  may_not_claim:
+    - id: news_conditional_response
+      why: no validated point-in-time expectation source exists, so no surprise slope
+        is estimated and no consensus claim is made
+    - id: propagation_or_transmission
+      why: this study's unit is one contract and one release. It holds no neighbour and
+        no donor, so nothing here is evidence about information moving between contracts
+    - id: causal_effect_of_the_release
+      why: >-
+        no intervention and no defended natural experiment. A scheduled-instant contrast
+        is a timing contrast, and the placebo design exists precisely because a
+        calendar artefact could produce one
+    - id: assimilation_half_life_or_precise_speed
+      why: >-
+        a flat or unstable curve is reported as unresolved within the window rather
+        than summarised as a half-life
+    - id: anything_about_what_a_live_participant_knew
+      why: source alignment is retrospective
+    - id: executable_arbitrage_or_profitability
+      why: no book, no depth, no fee layer and no order is placed anywhere in this
+        programme
+    - id: generalisation_beyond_the_declared_cohort
+      why: >-
+        ten releases and four declared series cannot carry a general claim about
+        prediction markets, and more releases do not substitute for the rule-vintage
+        dependency: every added release brings contracts whose vintages are equally
+        unattested
+    - id: settlement_or_payout_geometry
+      why: >-
+        a relative price change is not a distance to a rate or inflation strike in the
+        same economic units, and no moneyness covariate is constructed here
+  claim_ledger_pointer: reports/empirical_study/paper.md
+
+provenance:
+  read_before_writing:
+    - reports/study_execution_status.md
+    - reports/source_feasibility.md
+    - reports/empirical_study/paper.md
+    - configs/study_v2.yaml
+    - configs/event_windows_v2.yaml
+    - configs/cohort_v2.yaml
+    - configs/neighbor_graph_v2.yaml
+    - configs/cohort.yaml
+    - src/market_propagation/trade_panel.py
+  compatible_with_frozen_declarations: true
+  supersedes: none
+  changes_after_results_are_exploratory: true

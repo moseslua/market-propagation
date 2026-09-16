@@ -1,0 +1,422 @@
+# The ten historical release events for the study cohort, January through May 2025.
+# Dates come from the official BLS release calendars for January, February, March,
+# April, and May 2025, read 13 September 2026. Each calendar states that all times
+# are Eastern Time.
+# scheduled_at is the scheduled release time in the source calendar timezone.
+# scheduled_at_utc is the same instant after America/New_York conversion.
+# No eligible market ID is recorded here. Candidate series are leads only.
+# PublicIngestion owns all market and endpoint discovery.
+
+cohort:
+  cohort_id: core_2025h1
+  description: five CPI and five Employment Situation releases, January through May 2025
+  family_separation: cpi_and_employment_estimated_separately
+  event_count: 10
+  event_count_by_family:
+    cpi: 5
+    employment: 5
+  selection_basis: first_five_monthly_releases_of_2025_with_official_calendars_read
+  selected_without_reference_to_outcomes: true
+  verified_eligible_market_ids: []
+  verified_eligible_market_id_count: 0
+  cross_venue_verified_matches: []
+  cross_venue_match_status: unverified_polymarket_access_timed_out
+  paid_spend_usd: 0
+
+release_families:
+  cpi:
+    release_name: Consumer Price Index
+    bls_release_key: cpi
+    calendar_url_pattern: https://www.bls.gov/schedule/2025/{month:02d}_sched_list.htm
+    archive_url_pattern: https://www.bls.gov/news.release/archives/cpi_{mmddyyyy}.htm
+    typical_time: "08:30:00"
+    expectation_source_required: true
+    expectation_gate_scope: surprise_slopes_only
+    expectation_gate_meaning: >-
+      A pre-release expectation source is required only before a surprise slope is
+      estimated for this family. Its absence leaves every event in this file eligible for
+      the event-timing study, which is defined from scheduled release time and observed
+      quotes and needs no expectation source.
+    event_eligibility_effect_if_expectation_absent: none
+    timing_study_effect_if_expectation_absent: none
+  employment:
+    release_name: Employment Situation
+    bls_release_key: empsit
+    calendar_url_pattern: https://www.bls.gov/schedule/2025/{month:02d}_sched_list.htm
+    archive_url_pattern: https://www.bls.gov/news.release/archives/empsit_{mmddyyyy}.htm
+    typical_time: "08:30:00"
+    expectation_source_required: true
+    expectation_gate_scope: surprise_slopes_only
+    expectation_gate_meaning: >-
+      A pre-release expectation source is required only before a surprise slope is
+      estimated for this family. Its absence leaves every event in this file eligible for
+      the event-timing study, which is defined from scheduled release time and observed
+      quotes and needs no expectation source.
+    event_eligibility_effect_if_expectation_absent: none
+    timing_study_effect_if_expectation_absent: none
+
+expectation_availability:
+  known_expectation_source_for_these_events: unknown
+  status: unresolved_until_ingestion_reports
+  absence_effect_on_cohort_membership: none
+  absence_effect_on_timing_study: none
+  absence_effect_on_surprise_slopes: drop_that_slope_only
+  fabricated_or_hindsight_expectations: prohibited
+
+events:
+  - event_id: cpi_2025_01
+    family: cpi
+    reference_period: "2024-12"
+    reference_period_label: December 2024
+    scheduled_at: "2025-01-15T08:30:00-05:00"
+    scheduled_at_utc: "2025-01-15T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2025/01_sched_list.htm
+    calendar_weekday: Wednesday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_01152025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Consumer Price Index News Release - 2024 M12 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: null
+
+  - event_id: cpi_2025_02
+    family: cpi
+    reference_period: "2025-01"
+    reference_period_label: January 2025
+    scheduled_at: "2025-02-12T08:30:00-05:00"
+    scheduled_at_utc: "2025-02-12T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2025/02_sched_list.htm
+    calendar_weekday: Wednesday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_02122025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Consumer Price Index News Release - 2025 M01 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: null
+
+  - event_id: cpi_2025_03
+    family: cpi
+    reference_period: "2025-02"
+    reference_period_label: February 2025
+    scheduled_at: "2025-03-12T08:30:00-04:00"
+    scheduled_at_utc: "2025-03-12T12:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -4
+    daylight_saving_in_effect: true
+    calendar_url: https://www.bls.gov/schedule/2025/03_sched_list.htm
+    calendar_weekday: Wednesday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_03122025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Consumer Price Index News Release - 2025 M02 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: daylight_saving_started_2025-03-09_so_this_event_is_EDT
+
+  - event_id: cpi_2025_04
+    family: cpi
+    reference_period: "2025-03"
+    reference_period_label: March 2025
+    scheduled_at: "2025-04-10T08:30:00-04:00"
+    scheduled_at_utc: "2025-04-10T12:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -4
+    daylight_saving_in_effect: true
+    calendar_url: https://www.bls.gov/schedule/2025/04_sched_list.htm
+    calendar_weekday: Thursday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_04102025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Consumer Price Index News Release - 2025 M03 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: null
+
+  - event_id: cpi_2025_05
+    family: cpi
+    reference_period: "2025-04"
+    reference_period_label: April 2025
+    scheduled_at: "2025-05-13T08:30:00-04:00"
+    scheduled_at_utc: "2025-05-13T12:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -4
+    daylight_saving_in_effect: true
+    calendar_url: https://www.bls.gov/schedule/2025/05_sched_list.htm
+    calendar_weekday: Tuesday
+    initial_release_url: https://www.bls.gov/news.release/archives/cpi_05132025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Consumer Price Index News Release - 2025 M04 Results
+    initial_release_embargo_line: "Transmission of material in this release is embargoed until 8:30 a.m. (ET) Tuesday, May 13, 2025"
+    initial_release_usdl: USDL-25-0786
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases:
+      - release_name: Real Earnings
+        time: "08:30:00"
+        treatment: jointly_coded_or_excluded_per_contamination_rules
+    observed_publication_time: null
+    errors_notes: archive_body_read_confirms_embargo_time_equals_scheduled_time
+
+  - event_id: empsit_2025_01
+    family: employment
+    reference_period: "2024-12"
+    reference_period_label: December 2024
+    scheduled_at: "2025-01-10T08:30:00-05:00"
+    scheduled_at_utc: "2025-01-10T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2025/01_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_01102025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: null
+    initial_release_page_title_status: not_directly_observed
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: page_title_not_read_in_this_session_so_it_is_left_null
+
+  - event_id: empsit_2025_02
+    family: employment
+    reference_period: "2025-01"
+    reference_period_label: January 2025
+    scheduled_at: "2025-02-07T08:30:00-05:00"
+    scheduled_at_utc: "2025-02-07T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2025/02_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_02072025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Employment Situation News Release - 2025 M01 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: null
+
+  - event_id: empsit_2025_03
+    family: employment
+    reference_period: "2025-02"
+    reference_period_label: February 2025
+    scheduled_at: "2025-03-07T08:30:00-05:00"
+    scheduled_at_utc: "2025-03-07T13:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -5
+    daylight_saving_in_effect: false
+    calendar_url: https://www.bls.gov/schedule/2025/03_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_03072025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Employment Situation News Release - 2025 M02 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: daylight_saving_started_the_following_sunday_so_this_event_is_EST
+
+  - event_id: empsit_2025_04
+    family: employment
+    reference_period: "2025-03"
+    reference_period_label: March 2025
+    scheduled_at: "2025-04-04T08:30:00-04:00"
+    scheduled_at_utc: "2025-04-04T12:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -4
+    daylight_saving_in_effect: true
+    calendar_url: https://www.bls.gov/schedule/2025/04_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_04042025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Employment Situation News Release - 2025 M03 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: null
+
+  - event_id: empsit_2025_05
+    family: employment
+    reference_period: "2025-04"
+    reference_period_label: April 2025
+    scheduled_at: "2025-05-02T08:30:00-04:00"
+    scheduled_at_utc: "2025-05-02T12:30:00+00:00"
+    scheduled_at_source_timezone: America/New_York
+    utc_offset_hours: -4
+    daylight_saving_in_effect: true
+    calendar_url: https://www.bls.gov/schedule/2025/05_sched_list.htm
+    calendar_weekday: Friday
+    initial_release_url: https://www.bls.gov/news.release/archives/empsit_05022025.htm
+    initial_release_url_verified: true
+    initial_release_page_title: Employment Situation News Release - 2025 M04 Results
+    candidate_series: []
+    candidate_series_status: not_enumerated
+    eligibility_status: candidate_not_eligible
+    eligibility_basis: no_eligible_contract_verified_for_this_date
+    co_scheduled_releases: []
+    observed_publication_time: null
+    errors_notes: null
+
+candidate_contract_families:
+  description: >
+    Series families named by PublicIngestion as leads for downstream unresolved
+    contracts. Leads are not eligible contracts. No contract, ticker, or market ID
+    is verified in this file.
+  cpi_linked:
+    - family_key: cpi_headline_threshold
+      relation_type: predictive_or_economic_exposure
+      strike_dependency: announced_cpi_reading
+      verified_contract_ids: []
+    - family_key: cpi_core_threshold
+      relation_type: predictive_or_economic_exposure
+      strike_dependency: announced_core_cpi_reading
+      verified_contract_ids: []
+  employment_linked:
+    - family_key: payrolls_threshold
+      relation_type: predictive_or_economic_exposure
+      strike_dependency: announced_payroll_change
+      verified_contract_ids: []
+    - family_key: unemployment_rate_threshold
+      relation_type: predictive_or_economic_exposure
+      strike_dependency: announced_unemployment_rate
+      verified_contract_ids: []
+  policy_linked_downstream:
+    - family_key: policy_rate_decision
+      relation_type: economic_exposure
+      strike_dependency: later_policy_decision
+      is_primary_cohort: true
+      series_selection_bounds:
+        max_events_per_series: 60
+        max_markets_per_event_listing: 200
+        bounded_walk_is_a_coverage_limit: true
+      exposure_mechanism: >-
+        A CPI or Employment Situation release updates the information set a later
+        FOMC decision is made against, so a contract paying on that later decision
+        carries economic exposure to this release. This is a stock of information,
+        not a settlement relation: the release does not determine the policy
+        contract's payoff, it moves the distribution over it. The exposure is
+        therefore a hypothesis to be measured, never a verified equivalence between
+        a release contract and a policy contract.
+      observed_venue_series:
+        - KXFED
+        - FED
+        - KXFEDDECISION
+        - FEDDECISION
+      candidate_venue_series: []
+      observed_venue_series_evidence: >
+        Read from the exchange's series listing (14013 series) on 2026-09-13. KXFED
+        and FED carry title "Fed funds rate" and a Federal Reserve Board of
+        Governors settlement source on the FOMC calendars page; KXFEDDECISION and
+        FEDDECISION carry title "Fed meeting" and a Federal Reserve settlement
+        source. FED and FEDDECISION are the legacy prefix of the same two families
+        and are retained so the retired series are still reachable. A foreign
+        central bank's rate-decision contract, a same-period macro contract, a Fed
+        personnel vote and a Fed mention are not this family.
+      verified_contract_ids: []
+      contract_ids_status: unverified_no_eligible_contract_verified_for_any_event
+    - family_key: recession_or_growth_threshold
+      relation_type: economic_exposure
+      strike_dependency: later_macro_outcome
+      is_primary_cohort: false
+      observed_venue_series: []
+      candidate_venue_series: []
+      verified_contract_ids: []
+      contract_ids_status: not_enumerated_no_observed_series
+
+excluded_from_post_release_quote_response:
+  cohort_id: direct_resolution
+  basis: sampled_direct_contracts_closed_before_release_time
+  observed_pre_release_close_offsets:
+    - observed_venue_series: KXCPI
+      observed_close_time_et: "08:25:00"
+      minutes_before_release: 5
+      observation_origin: PublicDataScout_peer_report_2026_09_13
+      observation_status: feasibility_evidence_not_a_result
+    - observed_venue_series: KXPAYROLLS
+      observed_close_time_et: "08:29:00"
+      minutes_before_release: 1
+      observation_origin: PublicDataScout_peer_report_2026_09_13
+      observation_status: feasibility_evidence_not_a_result
+  note: >
+    This closes the question of whether post-release quote movement can be measured
+    for these direct contracts. It does not establish any response magnitude.
+
+expected_markets:
+  contract_count: null
+  contract_count_status: unknown_until_ingestion_completes
+  direct_vs_downstream_share: null
+  share_status: unknown_until_ingestion_completes
+  baseline_quote_availability: null
+  availability_status: unknown_until_ingestion_completes
+
+data_unknowns:
+  - which contracts were open and valid at each of the ten event times
+  - observed publication times from archived payloads
+  - intraday quote spacing available from historical endpoints
+  - whether any point-in-time expectation source is available for the ten events
+  - whether any exact cross-venue match passes the rule checklist
+
+provenance:
+  calendar_sources_read:
+    - https://www.bls.gov/schedule/2025/01_sched_list.htm
+    - https://www.bls.gov/schedule/2025/02_sched_list.htm
+    - https://www.bls.gov/schedule/2025/03_sched_list.htm
+    - https://www.bls.gov/schedule/2025/04_sched_list.htm
+    - https://www.bls.gov/schedule/2025/05_sched_list.htm
+  archive_pages_read:
+    - https://www.bls.gov/news.release/archives/cpi_01152025.htm
+    - https://www.bls.gov/news.release/archives/cpi_02122025.htm
+    - https://www.bls.gov/news.release/archives/cpi_03122025.htm
+    - https://www.bls.gov/news.release/archives/cpi_04102025.htm
+    - https://www.bls.gov/news.release/archives/cpi_05132025.htm
+    - https://www.bls.gov/news.release/archives/empsit_01102025.htm
+    - https://www.bls.gov/news.release/archives/empsit_02072025.htm
+    - https://www.bls.gov/news.release/archives/empsit_03072025.htm
+    - https://www.bls.gov/news.release/archives/empsit_04042025.htm
+    - https://www.bls.gov/news.release/archives/empsit_05022025.htm
+  read_on: "2026-09-13"

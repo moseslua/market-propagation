@@ -1,0 +1,704 @@
+config_version: study_d_perp_v1
+study_id: study_d_perp
+title: Perpetual-futures cross-venue funding differentials, basis and absorption
+
+# A design, not a result. This file declares the fourth study and reads
+# `configs/perp_arbitrage_v1.yaml`, which fixes what is collected and refused, and
+# `src/market_propagation/perp/`, which is the code that does it. Where this file
+# needs a number it names the measurement and where it came from.
+#
+# The questions, in the order the data can answer them:
+#
+# 1. When do quoted cross-venue funding differentials survive execution costs?
+# 2. How much capacity do they have?
+# 3. How fast are they competed away?
+#
+# The three are not equally answerable, and the honest answer differs for each. A
+# quoted spread is observable. The cost layer is not observable from this source at
+# all, so question 1 cannot be answered as posed and is restated below as a
+# break-even question in the cost threshold, reported as a function of a cost the
+# study cannot measure. Capacity is refused with a named code: the source publishes
+# venue-reported open interest and 24 h volume, which are aggregate activity figures
+# rather than executable depth. Question 3 is answerable in principle from the
+# collector's own build-to-build series and is not answerable today, because one
+# build is held.
+#
+# This is the only study in the programme whose data is prospective. Nothing here is
+# back-fillable: the source publishes rolling snapshots rather than an archive, so a
+# build not collected is gone. That is why collection starts before the analysis is
+# built, and why the sample below is described as it is rather than as its design
+# intends it to become.
+
+scope: >-
+  Source-time cross-sectional and build-to-build measurement of cross-venue funding
+  differentials and price basis in perpetual futures, and of how quickly a quoted
+  differential is absorbed. Gross quoted spreads only: no arbitrage, no realised
+  return net of costs, and no capacity claim is made anywhere in this file.
+
+status:
+  runnable_today: cross_sectional_descriptive_only
+  evidence_tier_permitted_today: descriptive
+  confirmatory_estimation_permitted: false
+  blocker: one_source_build_held_so_no_build_to_build_series_exists
+  blocker_detail: >-
+    persistence is a build-to-build quantity and exactly one distinct build is held.
+    A single cross-section has no second observation, so nothing about absorption
+    speed, competitive decay or opportunity duration is estimable. The cost layer is a
+    second, independent blocker that no amount of collection time removes.
+  measured_now:
+    sweep_log_entries: 2
+    sweeps_performed: 1
+    sweeps_skipped_because_the_build_was_unchanged: 1
+    distinct_builds_held: 1
+    build_time: 2026-09-16T10:30:34Z
+    assets_held: 24
+    market_snapshot_files: 24
+    funding_snapshot_files: 24
+    quotes_in_the_cross_section: 889
+    distinct_venues: 47
+    funding_differentials: 18547
+    cross_venue_basis_pairs: 18071
+    differentials_with_a_per_hour_spread: 16311
+    differentials_with_only_an_annualised_spread: 2236
+    quotes_with_open_interest: 881
+    quotes_with_24h_volume: 886
+    quotes_with_paid_30d: 650
+    execution_cost_layer_observable: false
+    capacity_estimable: false
+    opportunity_persistence_estimable_from_the_source: false
+    opportunity_persistence_estimable_from_the_collector: true
+  measured_where:
+    - data/perp/sweeps.jsonl
+    - src/market_propagation/perp/
+    - configs/perp_arbitrage_v1.yaml
+  why_this_study_is_not_blocked_on_the_same_thing_as_a_b_c: >-
+    studies A, B and C are blocked on a missing historical rule-vintage record. This
+    one is not: its rules are current, its source is read live, and its blocker is a
+    short collected series plus an unobservable cost layer. The two blocking causes are
+    unrelated, so more rule work does not help here and more collection does not help
+    there.
+
+unit_of_analysis: asset_x_venue_pair_x_time
+unit_key_fields:
+  - asset_class
+  - asset
+  - pair_id
+  - build_time
+panel_dimensions:
+  cross_section: asset, around 47 venues per asset
+  time: the source build stamp
+  row: one ordered cross-venue pair on one asset at one build
+why_pair_and_not_venue: >-
+  one venue lists several contracts for the same asset, distinguished by collateral:
+  ETH carries four `binance` rows and three `gmx` rows. Collapsing to venue would
+  silently merge contracts that settle differently, so the key is `(venue, symbol)` and
+  never the venue alone. Measured on the held cross-section: 889 quotes over 47
+  distinct venues on 24 assets.
+
+clock:
+  authority: configs/perp_arbitrage_v1.yaml
+  observation_time: source_build_stamp
+  basis: source_publication_time
+  local_receive_time_recorded: true
+  whole_site_rebuilds_as_one_unit: true
+  why_the_build_stamp_and_not_our_clock: >-
+    every page carries the same `Data generated at <ISO8601Z>` stamp, so the stamp is
+    the observation time and the local receive clock only measures our own latency. A
+    sweep is valid once per build; a second fetch inside one build returns
+    byte-identical figures and writes nothing. This is what makes a build a genuine
+    simultaneous cross-section rather than a bucket of fetches.
+  simultaneity_claim: >-
+    every row sharing a build stamp is simultaneous. Rows in different builds are not,
+    and the layout makes the distinction visible instead of implicit.
+  receive_vs_build_lag_measurable: true
+  receive_vs_build_lag_use: reported as a data-quality figure, never as a source latency
+    claim
+  timezone_storage: UTC
+  fixed_utc_offset_allowed: false
+
+horizons:
+  # Two distinct horizon families, and they are not interchangeable.
+  cadence_horizons_seconds:
+    - 3600
+    - 86400
+  cadence_horizon_basis: >-
+    3600 s is the priority sweep interval and 86400 s the full sweep interval, both
+    declared in `configs/perp_arbitrage_v1.yaml`. These are the horizons at which
+    persistence is observable at all, because they are the only instants at which
+    another build exists.
+  settlement_horizons_seconds:
+    - 3600
+    - 14400
+    - 28800
+  settlement_horizon_basis: >-
+    the documented funding schedules are 1 h, 4 h and 8 h. These are the intervals over
+    which a quoted rate actually converts into a settled cash flow, and a carry claim is
+    only meaningful at them.
+  primary_horizon_seconds: 86400
+  primary_horizon_reason: >-
+    the full sweep is the sampling unit that a continuous record can actually sustain,
+    and it is the horizon at which a cross-venue differential has had time to be
+    arbitraged rather than merely to be quoted. The hourly priority sweep is retained as
+    a secondary horizon and is not promoted to primary, because the priority set is the
+    source's own top-40 ranking and therefore changes composition between builds.
+  primary_horizon_status: not_estimable_today
+  restriction_reasons:
+    - id: horizons_limited_to_the_collected_cadence
+      reason: >-
+        no historical series is retrievable, so a horizon nobody collected has no
+        observation and is not declared. A shorter horizon would be a promise the
+        archive cannot keep.
+    - id: no_sub_cadence_horizon_declared
+      reason: >-
+        the source publishes rolling snapshots, so intra-build dynamics do not exist as
+        data. Nothing finer than a build is measurable, and no fill between builds is
+        permitted.
+
+outcome:
+  primary:
+    id: funding_apr_spread
+    symbol: S(a, p, t) = apr_short(a, t) - apr_long(a, t)
+    definition: >-
+      the difference between the higher and the lower annualised funding rate quoted
+      for the same asset on two different contracts at the same build, ordered so the
+      long side is where funding is cheap
+    units: annualised_rate_fraction
+    measured_values_today: 18547 ordered pairs across 24 assets at one build
+    smallest_scientifically_relevant_effect: 0.01
+    smallest_relevant_effect_reason: >-
+      one annualised percentage point, expressed as a fraction. It is a design choice,
+      and it is deliberately larger than the 0.005 probability-unit gain used elsewhere
+      in the programme because the two are different quantities on different scales and
+      must not be compared. No power calculation has been run, and at one build none
+      could be.
+  secondary:
+    - id: per_hour_spread
+      definition: the spread normalised to one hour through the resolved funding interval
+      relation_to_primary: same contrast, interval-normalised
+      why_it_needs_an_interval: >-
+        the per-hour figure requires the funding schedule, because a 4 h contract and an
+        8 h contract quoting the same per-settlement rate do not charge the same annual
+        rate. The annualised column needs no interval and is therefore the primary.
+      measured_pairs_with_it: 16311 of 18547
+    - id: settled_30d_spread
+      definition: the difference in what each side actually settled over the trailing 30
+        days
+      relation_to_primary: realised rather than quoted carry
+      why_it_is_secondary: >-
+        a quoted rate is what a venue charges next and a settled figure is what it
+        actually charged. They are different facts and are never merged; the claims
+        about realised carry rest on this one.
+      measured_quotes_carrying_it: 650 of 889
+    - id: cross_venue_log_basis
+      definition: log of the higher venue's price minus log of the lower venue's, for one
+        asset
+      relation_to_primary: a level difference between two venues' marks, not a tradeable
+        spread
+      measured_pairs_today: 18071
+  not_an_outcome_here:
+    - id: realised_return_net_of_costs
+      why: >-
+        the cost layer is not observable from this source, so no net figure exists. This
+        is the study's most important refusal and is repeated in the claim limits.
+    - id: executable_capacity
+      why: >-
+        open interest and 24 h volume are venue-reported aggregate activity, not
+        executable depth at the quoted price. Capacity is refused rather than proxied.
+    - id: any_perp_quantity_compared_with_a_prediction_market_quantity
+      why: >-
+        an annualised funding fraction and a probability on [0,1] are different
+        quantities and are never pooled, scaled or reported side by side as though they
+        were comparable
+
+treatment:
+  symbol: X
+  kind: none_observational
+  definition: >-
+    this study has no assigned treatment. It measures a quoted cross-sectional
+    difference and its own decay, so the regressor of interest is the lagged spread
+    itself.
+  why_there_is_no_treatment: >-
+    nothing is manipulated and no venue-level policy change is available as a natural
+    experiment on this sample. Calling the quoted spread a treatment would misdescribe
+    the design, and inventing an instrument to make it one would manufacture
+    identification the data does not carry.
+  entry_condition_for_a_persistence_test:
+    definition: >-
+      a pair enters the persistence subsample at build t when its absolute annualised
+      spread exceeds the declared smallest relevant effect
+    threshold: 0.01
+    threshold_fixed_before_any_result: true
+    why_an_entry_condition_exists: >-
+      absorption speed is only defined for a pair that had a differential to absorb. A
+      pair already at parity has nothing to decay and is a different observation, so it
+      is excluded from the persistence subsample and retained in the cross-sectional one.
+
+sample:
+  id: held_builds_with_two_observable_quotes
+  universe_authority: configs/perp_arbitrage_v1.yaml
+  universe_selected_by_source_ranking: true
+  universe_selection_note: >-
+    the priority set follows the source's own "Most traded assets" ranking rather than a
+    list frozen in the config, so it tracks liquidity instead of the day the config was
+    written. Ranking misses are appended rather than dropped. The consequence is
+    declared rather than hidden: the priority universe's composition can change between
+    builds, so a build-to-build panel must record membership per build and must not
+    assume a fixed roster.
+  eligible_asset_classes:
+    - crypto
+    - rwa
+  eligibility_rules:
+    - id: two_contracts_with_an_observable_rate
+      rule: a pair enters the cross-sectional sample only when both sides quote an
+        annualised funding rate
+      why: a spread needs two rates. One missing rate is a null pair, not a spread of
+        zero.
+    - id: two_distinct_contracts
+      rule: the two sides must differ in `(venue, symbol)`
+      why: >-
+        two entries sharing both are the same contract, so a "spread" between them is an
+        accounting artefact rather than a cross-venue position. Two entries on one venue
+        with different symbols are distinct contracts and are admissible.
+    - id: entry_condition_for_persistence_only
+      rule: the persistence subsample additionally requires the entry condition above
+      why: absorption is undefined for a pair that begins at parity
+    - id: no_activity_filter_on_the_cross_section
+      rule: the cross-sectional sample is not filtered on volume, open interest or any
+        other activity measure
+      why: >-
+        filtering on activity would select the sample by an outcome-correlated quantity
+        and would silently convert a census of the cross-section into a survey of the
+        liquid part. Activity measures are recorded as covariates, never as gates.
+  measured:
+    assets: 24
+    asset_list:
+      - ADA
+      - AIN
+      - AKE
+      - ARB
+      - BNB
+      - BTC
+      - DOGE
+      - ENA
+      - ETH
+      - FIL
+      - HYPE
+      - LINK
+      - LSK
+      - NEAR
+      - PEPE
+      - PONS
+      - PUMP
+      - SOL
+      - SUI
+      - TRUMP
+      - UNI
+      - XLM
+      - XRP
+      - ZEC
+    builds: 1
+  why_the_sample_is_described_this_way: >-
+    the collector ran at the 40-asset priority limit and stored 40 assets; 24 of them
+    have a market page this study's parser could turn into a cross-section, and the
+    remainder are recorded in the sweep log with their own outcome code rather than
+    dropped silently. The asset list is reproduced in full because it is a real sample
+    and a reader should be able to see exactly which assets produced it.
+
+exclusions:
+  missing_is_null: true
+  observed_zero_is_evidence: true
+  imputation_forbidden: true
+  unobserved_marker: em_dash
+  unobserved_marker_reason: >-
+    the source writes an em dash for a figure it did not observe. It parses to null and
+    the caller records a named refusal. A venue the source did not look at is not a
+    venue that traded nothing, and collapsing the two would report absent data as a dead
+    venue.
+  refusal_codes:
+    - code: source_reported_no_figure
+      why: the source printed an em dash, so the figure was not observed
+      measured_differentials_carrying_it: 18547
+    - code: figure_not_parseable
+      why: a non-dash cell failed to parse, which is a fault rather than an absence
+    - code: funding_interval_not_derivable
+      why: neither derivation produced a documented schedule
+      measured_pairs_with_only_an_annualised_spread: 2236
+    - code: funding_interval_derivations_disagree
+      why: >-
+        the annualised-rate route and the settled-count route named different schedules.
+        The two derivations are independent, so agreement is real corroboration and
+        disagreement means one of them is not measuring what the study thinks. Refusing
+        on disagreement is preferred to choosing, because the interval sets the per-hour
+        normalisation every per-hour differential depends on.
+      measured_occurrences: 0
+    - code: page_carried_no_build_stamp
+      why: without the stamp there is no observation time, so the page cannot become a
+        cross-section
+    - code: execution_cost_not_observable_from_this_source
+      why: >-
+        the source publishes an execution-cost page whose server-rendered body carries
+        no table, so the fee and slippage layer cannot be observed. Present on every one
+        of the 18,547 differentials so a consumer cannot mistake a quoted spread for an
+        executable one.
+      measured_differentials_carrying_it: 18547
+    - code: funding_apr_missing_on_one_side
+      why: no annualised rate on one side, so no spread exists
+    - code: price_missing_on_one_side
+      why: no price on one side, so no basis exists
+    - code: pair_is_the_same_contract
+      why: both sides share `(venue, symbol)`, so the pair is not a cross-venue position
+  page_outcome_codes:
+    # Every fetch outcome is recorded on the sweep. A partial sweep is auditable
+    # rather than merely short.
+    - code: stored
+    - code: already_held_for_this_build
+    - code: transport_blocked
+    - code: page_shape_refused
+  page_shape_refusal_reason: >-
+    the market and funding tables are located by their exact declared headers rather
+    than by position, so a page whose header does not match raises instead of storing
+    one quantity under another's name. A shape change is a refusal, never a silently
+    mis-keyed table.
+  contamination_stop:
+    - source_build_stamp_unchanged
+    - transport_failure_or_rate_limit
+    - page_shape_change
+  contamination_stop_reason: >-
+    an unchanged build is skipped rather than re-stored, so a poll cannot become a
+    duplicate observation; a transport failure is a recorded refusal rather than an
+    empty success; and a shape change stops the sweep for that page rather than
+    producing a guess.
+
+primary_specification:
+  id: spread_decay_and_breakeven_over_one_full_sweep
+  immutable_after_results: true
+  status: not_estimable_today
+  status_reason: 1 build held, so no build-to-build pair exists
+  estimand_cross_sectional: >-
+    the distribution of the annualised cross-venue funding spread by asset at a build,
+    reported as a census of the observable cross-section with its refusal counts
+  estimand_persistence: >-
+    the fraction of pairs whose absolute spread exceeds the declared entry threshold at
+    build t and is below it at build t + H, with H the primary cadence horizon
+  break_even_restatement:
+    # Question 1 cannot be answered as posed, so it is restated as something the data
+    # can answer rather than dropped or answered with an unmeasurable number.
+    question_as_posed: do quoted cross-venue differentials survive execution costs
+    why_unanswerable: >-
+      the cost layer is not observable from this source, so no spread can be compared
+      with a cost. Any statement that a spread "survives costs" would require inventing a
+      fee and slippage number.
+    restated_question: >-
+      at what cost level in basis points would the observed spread distribution cease to
+      contain a given fraction of pairs
+    output: a break-even curve indexed by cost, reported for the declared cost grid
+    cost_grid_basis_points:
+      - 0
+      - 1
+      - 2
+      - 5
+      - 10
+      - 20
+      - 50
+    why_that_is_legitimate: >-
+      the curve is a restatement of an observed distribution, not an estimate. It
+      reports what cost would be needed to erase the observed spread, and it never
+      asserts that such a cost is attainable, typical, or even physically possible on
+      these venues. The grid is a reporting axis, not a claim that any venue charges
+      these amounts.
+    forbidden_use: >-
+      a point on the break-even curve is never reported as a profit, an arbitrage, or an
+      expected return, and the curve is never presented without the cost layer's
+      observability status attached.
+  null_hypothesis_persistence: the spread at t + H is independent of the spread at t
+  decision_rule: >-
+    report the point estimate and a two-sided 95 % build-clustered interval. This study
+    claims no directional effect and therefore promotes nothing on a one-sided bound.
+  no_post_result_threshold_reduction: true
+  cost_layer_requirement_for_promotion: >-
+    the spread measurements may be promoted from descriptive to a mechanism-consistent
+    reading only when an independently sourced fee and slippage layer covers the venues
+    in the pair set. Until then every artifact carries the execution-cost refusal.
+
+exploratory_namespace:
+  label: exploratory
+  members:
+    - id: cross_sectional_spread_census
+      what: the spread distribution by asset and by venue pair at the held build
+      status: runnable
+      claim_ceiling: a one-build cross-sectional description. It says nothing about
+        persistence, nothing about capacity and nothing about returns.
+    - id: basis_venue_ordering
+      what: which venues print high and which low for a given asset
+      status: runnable
+      claim_ceiling: a descriptive ordering of one build. It is not a tradeable spread
+        and it is not evidence about price discovery, because a higher mark on one venue
+        can reflect a different collateral, index or contract specification rather than a
+        stale price.
+    - id: interval_derivation_reconciliation
+      what: agreement between the annualised-rate and settled-count interval derivations
+      status: runnable
+      claim_ceiling: a data-quality reconciliation, not an estimate
+    - id: venue_reported_activity_summary
+      what: the open-interest and 24 h volume columns as quoted
+      status: runnable
+      claim_ceiling: >-
+        a summary of what venues report. These are aggregate activity figures and are
+        never re-labelled as capacity or as executable depth.
+    - id: received_minus_build_seconds
+      what: the gap between the source build stamp and the local receive time
+      status: runnable
+      claim_ceiling: a measurement of our own fetch latency. It is not a source latency
+        claim and it is never described as one.
+    - id: persistence_and_decay
+      what: the primary persistence estimand
+      status: not_run
+      not_run_reason: one build held
+    - id: capacity
+      what: how much size a differential could carry
+      status: refused
+      refused_reason: capacity_estimable is false; no depth is observable from this
+        source at the quoted price
+    - id: venue_entry_and_exit
+      what: how often a venue appears or disappears between builds
+      status: not_run
+      not_run_reason: one build held, and the source adds and drops assets continuously
+        so the roster is a measured quantity rather than a fixed one
+
+multiple_testing:
+  primary_family_size: 1
+  primary_correction: none_required_for_a_single_declared_contrast
+  declared_asset_family:
+    member_count: 24
+    correction: benjamini_hochberg
+    q: 0.05
+    why: >-
+      assets are not a small prespecified family with independent hypotheses; they are a
+      census of what the source published. FDR control is declared so a per-asset
+      discovery rate is not read as a family-wise claim.
+  declared_venue_pair_family:
+    member_count: 18547
+    correction: benjamini_hochberg
+    q: 0.05
+    why: >-
+      the pair count is the cross-product of the venue set and grows with the square of
+      the venue count. Without correction, a handful of extreme pairs would be reported
+      as findings in every build by construction.
+  declared_cost_grid_family:
+    member_count: 7
+    correction: bonferroni_simultaneous_bands
+    level_rule: one minus (alpha divided by the number of declared grid points)
+    why: >-
+      the break-even curve is one curve reported together, and banding each grid point
+      separately would let the widest single point stand in for the curve
+  exploratory_correction: benjamini_hochberg
+  exploratory_q: 0.05
+  pseudo_replication_prohibited: true
+  pseudo_replication_note: >-
+    many pairs from one asset share that asset's mark and many assets from one build
+    share that build's market-wide move. Counting either as independent observations
+    inflates precision and is prohibited.
+
+clustering:
+  level: source_build
+  cluster_id_field: build_time
+  cluster_count_held: 1
+  cluster_count_expected: the number of distinct builds collected, which grows with
+    collection time and cannot be increased retrospectively
+  why_build_and_not_asset:
+    - a build is a simultaneous cross-section, so assets inside it share a market-wide
+      move and are not independent of each other
+    - the persistence estimand is build-to-build, so the build is the unit the
+      resampling has to preserve
+  why_not_asset: >-
+    assets are the panel dimension rather than the independent unit. There are 24 of them
+    and they are correlated through a common crypto factor, so asset clustering would
+    both throw away the cross-sectional dependence and leave too few clusters for a
+    useful interval.
+  asset_side_requirement: >-
+    an asset-level interval may be reported as a secondary figure only when the number of
+    builds is large enough for the build clusters to carry it. It is never reported
+    instead of the build-clustered interval.
+  few_cluster_handling: >-
+    with a single build no interval is reported at all. With fewer than 20 builds the
+    interval is reported with an explicit few-cluster caveat and a finite-sample
+    sensitivity, and no interval is reported below 3 builds.
+  dependence_named:
+    - id: pairs_sharing_a_leg
+      why: >-
+        the 18,547 pairs are not 18,547 independent facts. Two pairs sharing one venue
+        contract share that contract's rate, so the pair set is a graph rather than a
+        sample. Build clustering covers the cross-sectional component; the leg-level
+        component is carried as a named limitation and is addressed by a declared
+        sensitivity that restricts to the non-overlapping pair set.
+    - id: pairs_sharing_an_asset
+      why: all pairs for one asset share that asset's price and funding environment
+
+bootstrap:
+  unit: whole_source_build
+  resampling: with_replacement_over_builds
+  draws_per_interval: 200
+  seed: 20260913
+  resampling_seed: 20260914
+  seed_authority: configs/study_v2.yaml
+  keep_intact_within_a_drawn_build: every asset, every venue and every pair of that build
+  prohibited_units:
+    - iid_resampling_of_individual_quotes
+    - pair_as_an_independent_unit
+    - asset_as_an_independent_unit_within_one_build
+    - venue_as_an_independent_unit
+  why: >-
+    a resample must preserve the simultaneous cross-section that a build is. Drawing
+    pairs or assets inside one build breaks exactly the dependence the build exists to
+    represent.
+  deterministic_requirement: identical_seed_reproduces_identical_output
+  row_order_invariance_required: true
+  not_estimable_today_reason: one build held, so a build resample has nothing to draw
+
+dependencies:
+  - id: perpdexlist_market_and_funding_pages
+    provides: the cross-section
+    status: present
+    measured: 24 market and 24 funding snapshot files at one build; 889 quotes; 47
+      distinct venues; 18547 differentials
+    evidence: data/perp/, src/market_propagation/perp/parse.py
+    risk: the source publishes rolling snapshots only, so nothing is back-fillable and a
+      missed build is permanently absent
+  - id: collector_running_at_the_declared_cadence
+    provides: the build-to-build series
+    status: partially_present
+    measured: 1 sweep performed, 1 skipped because its build was unchanged, 1 distinct
+      build held
+    evidence: data/perp/sweeps.jsonl
+    why_it_blocks_the_primary_specification: >-
+      the primary estimand is a build-to-build decay and the series has one member. This
+      is the single dependency that collection time can and will close.
+  - id: source_build_stamp
+    provides: the observation time and the simultaneity claim
+    status: present
+    measured: one distinct stamp, 2026-09-16T10:30:34Z
+    evidence: src/market_propagation/perp/parse.py
+    why_it_matters: without it a page has no observation time and cannot become a
+      cross-section, and the simultaneity claim across assets would be an assumption
+  - id: two_independent_funding_interval_derivations
+    provides: the per-hour normalisation
+    status: present
+    measured: 16311 of 18547 differentials carry a per-hour spread; 2236 fall back to
+      the annualised spread alone; 0 disagreements
+    evidence: src/market_propagation/perp/parse.py
+    note: >-
+      a disagreement count of zero is a measured zero, not a missing check. Both
+      derivations ran on every pair and agreed everywhere they both resolved.
+  - id: execution_cost_layer
+    provides: any statement about whether a spread survives costs
+    status: absent
+    measured: execution_cost_not_observable_from_this_source on 18547 of 18547
+      differentials
+    evidence: src/market_propagation/perp/differentials.py
+    why_it_is_absent: >-
+      the source publishes an execution-cost page, but its server-rendered body carries
+      no table, so the fee and slippage layer cannot be observed from these pages. This
+      dependency cannot be closed by collection time or by more assets.
+    consequence: the study's first question cannot be answered as posed, and the
+      break-even restatement above is what replaces it
+  - id: observable_depth
+    provides: capacity
+    status: absent
+    measured: 881 quotes carry venue-reported open interest and 886 a 24 h volume
+    why_it_is_absent: >-
+      open interest and volume are aggregate activity figures reported by the venue, not
+      executable depth at the quoted price. They bound nothing about how much size a
+      differential could carry, so capacity stays refused rather than proxied.
+    consequence: capacity is not estimated, not bounded, and not approximated
+  - id: non_overlapping_pair_set
+    provides: an interval without leg sharing
+    status: available_in_principle
+    why: >-
+      the declared sensitivity restricts to pair sets with no shared leg, which removes
+      the leg-level dependence. It is declared here and is not run today because the
+      primary estimand is not runnable.
+  - id: transaction_tape_calibration
+    provides: nothing
+    status: not_applicable
+    why: >-
+      the calibration in `configs/study_v2.yaml` measures the promotion rule of the
+      within-venue propagation ladder on a synthetic transaction process. This study has
+      no ladder, no promotion rule and no decision rule to calibrate, so the certificate
+      does not transfer and is not cited as support here.
+
+claim_limits:
+  may_claim:
+    - a quoted cross-venue funding spread and price basis are observable and were
+      measured on a real cross-section at one real source build
+    - the cross-section is simultaneous by construction and its simultaneity rests on the
+      source's own build stamp
+    - every refusal is a null with a named code, and the counts are reported rather than
+      dropped
+    - the execution-cost layer is unobservable from this source, measured on all 18547
+      differentials
+  may_not_claim:
+    - id: arbitrage
+      why: >-
+        a gross quoted spread with the cost layer missing is not an arbitrage. It says
+        nothing about whether a position could be opened at those prices, and the code
+        carries the refusal on every differential precisely so this cannot be misread.
+    - id: net_of_cost_returns_or_profitability
+      why: the cost layer is absent, so no net figure exists and none is imputed. The
+        break-even curve is a restatement of an observed distribution, never a return.
+    - id: capacity
+      why: >-
+        capacity_estimable is false. No depth is observable, and open interest and volume
+        are not substitutes for it.
+    - id: absorption_or_competition_speed
+      why: 'one build is held. This is the primary estimand and it is not estimated.'
+    - id: a_persistent_or_recurring_opportunity
+      why: >-
+        persistence is unmeasured today, and a single cross-section cannot distinguish a
+        standing structural difference between venues from a transient dislocation.
+    - id: price_discovery_or_lead_lag
+      why: >-
+        a higher mark on one venue may reflect a different collateral, index or contract
+        specification rather than a stale price, and this design does not separate those.
+    - id: any_comparison_with_the_prediction_market_studies
+      why: >-
+        an annualised funding fraction and a probability on [0,1] are different
+        quantities. They are never pooled, rescaled, or presented side by side as though
+        the numbers were comparable, and no figure from this study is used as evidence
+        about release absorption or propagation.
+    - id: anything_about_what_a_live_participant_knew
+      why: >-
+        the build stamp is a publication time. Events between builds are not observed and
+        are not inferred.
+    - id: executable_anything_without_a_position
+      why: >-
+        this programme is read-only. It places no orders, holds no funded accounts and
+        performs no interventions, and no result here is a trading recommendation.
+
+provenance:
+  read_before_writing:
+    - configs/perp_arbitrage_v1.yaml
+    - configs/study_v2.yaml
+    - src/market_propagation/perp/__init__.py
+    - src/market_propagation/perp/parse.py
+    - src/market_propagation/perp/universe.py
+    - src/market_propagation/perp/differentials.py
+    - src/market_propagation/perp/store.py
+    - scripts/perp_collector.py
+    - data/perp/sweeps.jsonl
+    - reports/study_execution_status.md
+    - reports/source_feasibility.md
+  measurements_taken_while_writing_this_file:
+    - what: the held cross-section at the one build
+      how: the stored market parquet files passed through
+        `market_propagation.perp.differentials`
+      result: 24 assets, 889 quotes, 47 distinct venues, 18547 ordered differentials,
+        18071 basis pairs
+    - what: refusal coverage on the differentials
+      result: execution_cost_not_observable_from_this_source on 18547 of 18547;
+        funding_interval_not_derivable on 2236; no derivation disagreements
+    - what: the build series
+      how: the sweep log
+      result: 2 entries, 1 performed and 1 skipped, 1 distinct build
+  compatible_with_frozen_declarations: true
+  supersedes: none
+  changes_after_results_are_exploratory: true

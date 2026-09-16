@@ -1,0 +1,190 @@
+# Event-window rules for the market-propagation study.
+# Applies to every release listed in configs/cohort.yaml.
+# All offsets are seconds relative to the scheduled release time.
+# No window is extended to cover a closed market.
+
+alignment:
+  reference_point: scheduled_release_time
+  reference_precision: seconds
+  source_calendar_timezone: America/New_York
+  storage_timezone: UTC
+  offset_conversion: IANA_timezone_database
+  fixed_utc_offset_allowed: false
+  observed_publication_time_used_when: available_from_archived_payload
+  scheduled_time_used_when: observed_publication_time_unavailable
+
+windows:
+  main:
+    window_id: main
+    pre_event_seconds: 1800
+    post_event_seconds: 3600
+    pre_event_role: diagnostic_only
+    post_event_role: primary_response_window
+  secondary_horizons_seconds:
+    - 60
+    - 300
+    - 900
+    - 1800
+    - 3600
+  sensitivity_post_event_seconds:
+    - 300
+    - 900
+    - 1800
+    - 3600
+    - 7200
+  restrictions:
+    - horizons_limited_to_actual_data_resolution
+    - longer_intraday_and_daily_responses_are_separate_outcomes
+    - prospective_sub_second_horizons_excluded_until_clock_audit_passes
+  contamination_stop:
+    - market_close
+    - sequence_gap
+    - halt
+    - disconnect
+    - coincident_scheduled_release
+    - quality_boundary
+  stop_action: truncate_without_fill
+  wider_window_role: sensitivity_only
+
+baseline:
+  rule: last_valid_quote_strictly_before_event_time
+  must_satisfy: two_sided_and_valid
+  max_age_seconds: 120
+  age_field: baseline_age_seconds
+  retained_in_panel: true
+  freshness_basis: last_verified
+  rejected_sources:
+    - last_trade_carried_across_release
+    - price_change_age_as_staleness_proxy
+    - quote_from_before_a_gap_or_reconnect
+
+endpoint:
+  rule: as_of_last_valid_quote_at_or_before_event_plus_horizon
+  max_age_seconds: 120
+  validity_requirement: two_sided_and_valid
+  invalid_endpoint_action: mark_row_invalid_with_exclusion_reason
+  retained_as_masked_row: true
+
+direct_resolution_contracts:
+  post_release_quote_response: excluded
+  exclusion_basis: sampled_direct_contracts_closed_before_release_time
+  observation_origin: PublicDataScout_peer_report_2026_09_13
+  observation_status: feasibility_evidence_not_a_result
+  permitted_windows:
+    - pre_event_diagnostic
+    - settlement_and_assimilation_window
+  prohibited:
+    - inferring_instant_assimilation_from_a_closed_book
+    - filling_a_closed_market_forward
+
+downstream_unresolved_contracts:
+  role: primary_cohort
+  window_end: first_of_close_gap_halt_disconnect_coincident_release_or_quality_boundary
+  response_undefined_when: no_valid_two_sided_quote_in_window
+
+horizon_uncertainty_unit:
+  independent_unit: economic_release
+  event_is_the_resampling_unit: true
+  quote_snapshots_per_release: dependent_observations
+  contracts_per_release: dependent_observations
+  iid_snapshot_resampling: prohibited
+  row_level_bootstrap_within_a_release: prohibited
+  pseudo_replication_note: >-
+    The horizons listed above describe one response or coherence curve per release. Rows,
+    quotes, and contracts inside a release are not independent units for uncertainty, so
+    any bootstrap that resamples individual snapshots is pseudo replication rather than
+    added information.
+
+coherence_curve_uncertainty:
+  applies_to: bid_ask_aware_coherence_distance_trajectory
+  curve_index: prespecified_horizons_within_one_release
+  resampling_unit: economic_release
+  resampling_preserves: release_level_synchronization_and_cross_horizon_dependence
+  resampling_permitted:
+    - whole_release_cluster_bootstrap_of_coherence_curves
+    - leave_one_release_out_sensitivity
+  resampling_prohibited:
+    - iid_resampling_of_individual_quote_snapshots
+    - row_level_bootstrap_within_a_release
+
+matched_controls:
+  window: identical_to_matched_treated_contract
+  validity_requirement: argued_in_writing_before_estimation
+
+forecast_windows:
+  prediction_time_offset_seconds: 60
+  target_horizon_seconds: 300
+  target_window: prediction_time_to_prediction_time_plus_300s
+  information_cutoff: prediction_time
+  features_must_be_available_by: prediction_time
+  label_available_by: prediction_time_plus_300s
+  overlap_with_training_label_window: purged
+
+replay:
+  orders:
+    - source_time_order
+    - usable_time_order
+  disagreement_reporting: required
+  quote_invalidation_across_gap: until_snapshot_recovery
+  stamped_fields:
+    - replay_order
+    - raw_hashes
+    - clock_quality
+    - timing_uncertainty_seconds
+
+panel_columns_required:
+  - event_id
+  - cluster_id
+  - family
+  - contract_id
+  - venue
+  - cohort
+  - event_time
+  - horizon_seconds
+  - baseline_time
+  - endpoint_time
+  - baseline
+  - endpoint
+  - response
+  - spread_before
+  - spread_after
+  - depth_before
+  - depth_after
+  - baseline_age_seconds
+  - endpoint_age_seconds
+  - valid
+  - exclusion_reason
+  - raw_hashes
+  - replay_order
+  - clock_quality
+  - timing_uncertainty_seconds
+  - label_available_time
+  - training_cutoff
+  - split
+
+panel_units:
+  grain: event_id_contract_id_horizon_seconds
+  floats_allowed_only_in_panel: true
+  times: UTC_aware
+  unassigned_split_or_cutoff: null
+  response_units: absolute_probability_units_on_the_0_to_1_scale
+  response_units_note: >-
+    Response, baseline, and endpoint values are probabilities on the 0 to 1 scale, so a
+    value of 0.01 in the panel equals 1 percentage point. Stored values are never rescaled
+    to a 0 to 100 scale.
+
+liquidity:
+  pre_event_role: heterogeneity_stratum
+  post_event_role: separate_mechanism_model
+  post_event_use_as_total_effect_control: prohibited
+
+falsifiers:
+  - pre_release_leads
+  - shifted_release_times_matched_on_time_of_day
+  - shuffled_event_labels_within_regime
+  - matched_negative_control_contracts
+  - reversed_candidate_graph_directions
+  - quote_age_stratification
+  - endpoint_change
+  - leave_one_release_out
+placebo_exchangeability: must_be_argued_before_use

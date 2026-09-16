@@ -1,0 +1,620 @@
+config_version: study_c_crossmeeting_v1
+study_id: study_c_crossmeeting
+title: Cross-meeting propagation into same-strike later policy-rate contracts
+
+# A design, not a result. This file declares the study the v2 exposure graph exists
+# to serve, and it inherits the graph's topology rules rather than restating them:
+# `configs/neighbor_graph_v2.yaml` is the authority for the decision calendar, the
+# predicate match fields and the rule-vintage requirement.
+#
+# The question: does a shock to a nearer policy-rate contract propagate into
+# same-strike later contracts? The unit is strike x meeting pair x release.
+#
+# The mechanism, stated plainly so the design can be judged against it: a CPI or
+# payrolls release updates the market's view of the nearer policy decision. If that
+# updated view travels into the contract about the *following* meeting at the same
+# strike, then the nearer contract's post-release move should carry information about
+# the later contract's subsequent move. That is a predictive claim about lagged
+# information, not a claim that the release caused the later price.
+#
+# This is the study the programme is built around, and on this archive it is blocked.
+# The graph admits 0 edges. The blocking reason is measured, and it is not the venue,
+# not the trading session and not a thin sample: 623 edges are structurally
+# admissible and every one is withheld by the rule-vintage requirement alone.
+
+scope: >-
+  Source-time measurement of whether an admissible nearer-meeting donor contract's
+  lagged return predicts a receiver contract's forward return, beyond the receiver's
+  own state and the release's news. Donors are immediate-predecessor meetings at an
+  identical payout predicate only. Same-meeting sibling strikes, payoff identities and
+  estimated associations outside the declared graph are all outside this file.
+
+status:
+  runnable_today: blocked
+  evidence_tier_permitted_today: none_for_the_primary_claim
+  confirmatory_estimation_permitted: false
+  blocker: no_admissible_donor_under_the_declared_rule_vintage_requirement
+  blocker_detail: >-
+    0 edges are admitted. The graph refuses 785 receivers on their own rule check
+    before a donor is even sought, so that count does not by itself measure the size of
+    the gap. The size of the gap is measured separately with a diagnostic sentinel that
+    is explicitly not evidence: 623 edges are structurally admissible across the ten
+    releases, about 62 per release, and all 623 are withheld by the rule-vintage
+    requirement alone.
+  does_the_sentinel_supply_evidence: false
+  sentinel_reason: >-
+    the sentinel certifies every window and is explicitly not evidence about any
+    contract's rule vintage. It exists only to size the gap. Every number it produces is
+    labelled diagnostic and no estimate may be built on it.
+  measured_now:
+    candidate_contracts: 689
+    declared_release_contract_pairs: 785
+    contracts_with_a_readable_predicate: 155
+    contracts_refused: 534
+    contracts_refused_month_not_dated_by_the_declared_calendar: 533
+    contracts_refused_unreadable_payout_text: 1
+    receiver_decisions: 1550
+    rule_vintage_unverified: 785
+    resolved_before_forecast_origin: 480
+    receiver_not_open_at_origin: 285
+    edges_admitted: 0
+    empty_graph_digest: 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
+    structurally_admissible_edges_under_a_diagnostic_sentinel: 623
+    structural_probe_resolved_before_forecast_origin: 628
+    structural_probe_no_matched_threshold: 14
+    structural_probe_receiver_not_open_at_origin: 285
+    forecast_rows: 785
+    forecast_distinct_receivers: 107
+    forecast_valid_rows: 12
+    forecast_rows_with_a_target: 29
+    forecast_rows_with_own_lag: 43
+    forecast_rows_with_neighbor_lag: 0
+  measured_where:
+    - reports/study_execution_status.md
+    - .audit/study-v3/graph_decisions.json
+    - .audit/study-v3/structural_probe.json
+    - .audit/astra-repair/evidence_three_gates.md
+  narrower_runnable_look:
+    # Recorded because a reader will ask whether the design is blocked on sample size
+    # or on evidence. Under a deliberately *permissive* rule (any future meeting
+    # qualifies as the predecessor) the answer is still one release out of ten.
+    permissive_rule_releases_estimable: 1 of 10
+    permissive_rule_pair: receiver FED-25MAY-T4.25 (meeting 2025-05-07), donor
+      FED-25MAR-T4.25 (meeting 2025-03-19)
+    permissive_rule_release: empsit_2025_03
+    binding_constraints_in_order:
+      - id: receiver_anchor
+        rule: 5 of 10 releases have no contract with a print inside 120 s of the
+          forecast origin
+      - id: receiver_target
+        rule: 4 of 10
+      - id: donor_print_at_tau_minus_lag_guard
+        rule: 2 of 10
+    not_a_dormant_venue_note: >-
+      empsit_2025_04 has 208 rate-level prints inside its measurement window and 1,974
+      that day, and still yields no admissible pair. The constraint is the print
+      landing where the design needs it, not venue activity.
+
+unit_of_analysis: strike_x_meeting_pair_x_release
+unit_key_fields:
+  - event_id
+  - receiver_contract_id
+  - donor_contract_id
+  - threshold
+  - cluster_id
+multiple_events_per_contract: >-
+  one contract can be the receiver for several releases and the donor for others. A
+  contract therefore appears in more than one row, which is why the release is the
+  independent unit and why a leave-one-release-out analysis is the declared
+  sensitivity rather than an optional extra.
+
+clock:
+  authority: configs/study_v2.yaml
+  windows_authority: configs/event_windows_v2.yaml
+  mode: source
+  basis: venue_recorded_transaction_time
+  reference_point: scheduled_release_time
+  forecast_origin_seconds: 300
+  lag_guard_seconds: 60
+  future_horizon_seconds: 300
+  graph_window_authority: configs/neighbor_graph_v2.yaml
+  retrospective_alignment_is_a_limitation: true
+  why_three_instants: >-
+    the donor is read from the release to `tau - L`; the target is read from `tau` to
+    `tau + H`; the recipient's own autoregressive term is read from `tau - H` to `tau`.
+    The donor's read stops one guard before the target opens, so the same prints never
+    inform both sides of the comparison. That separation is the whole reason the lag
+    guard exists and it is not adjustable after results are seen.
+
+horizons:
+  declared_horizons_seconds:
+    - 60
+    - 300
+    - 900
+    - 1800
+    - 3600
+  primary_horizon_seconds: 300
+  primary_horizon_meaning: >-
+    the five-to-ten-minute increment from the forecast origin, not the first five
+    minutes' absorption. The first five minutes are the donor's window, so measuring
+    the target over them would measure the same event twice.
+  restriction_reasons:
+    - id: horizons_limited_to_actual_data_resolution
+      reason: the receiver target needs prints at both ends inside the age caps
+    - id: the_target_is_not_the_donor_window
+      reason: >-
+        the target opens at the forecast origin and the donor's read closes one lag
+        guard before it. No horizon is declared that would overlap the two.
+    - id: longer_and_settlement_responses_are_separate_outcomes
+      reason: different contamination profile, not folded into this curve
+    - id: prospective_sub_second_horizons_excluded_until_clock_audit_passes
+      reason: no sub-second clock audit exists on the transaction path
+
+outcome:
+  primary:
+    id: network_target
+    symbol: Y(e,i) = p_i(last trade <= tau + H) - p_i(last trade <= tau)
+    definition: the receiver's own forward increment over the declared horizon, opened at
+      the forecast origin
+    units: absolute_probability_units_0_1
+    measured_rows_with_a_target: 29 of 785
+    measured_valid_rows: 12 of 785
+    smallest_scientifically_relevant_effect: 0.005
+    smallest_relevant_effect_reason: >-
+      inherited from the v1 and v2 freezes as the smallest MAE gain that promotes a rung.
+      Preserved unchanged rather than re-chosen for this study. The design's own power to
+      detect it is unknown and no power calculation has been run at this event count.
+  secondary:
+    - id: neighbor_lag
+      symbol: X_donor(j) = p_j(last trade <= tau - L) - p_j(last trade strictly before
+        release_time)
+      relation_to_primary: the treatment; lagged, and closed before the target opens
+      measured_rows_with_neighbor_lag: 0
+    - id: own_lag
+      symbol: p_i(last trade <= tau) - p_i(last trade <= tau - H)
+      relation_to_primary: the recipient's own past over a window of the same declared
+        length as the target. It is the own rung's autoregressive term and it is never
+        another contract's future.
+      measured_rows_with_own_lag: 43
+  not_an_outcome_here:
+    - id: absorption
+      why: that is study A's estimand on a single contract, with a different unit
+    - id: same_meeting_cross_strike_move
+      why: >-
+        mutually exclusive strikes of one meeting are mechanically dependent: their
+        payoffs partition one outcome, so their prices must sum to one by construction.
+        A relation between them is an accounting identity, not propagation, and is
+        declared not built in `configs/neighbor_graph_v2.yaml`.
+    - id: settlement_or_resolution_accuracy
+      why: a resolution label is a different target and is never a feature here
+
+treatment:
+  symbol: X
+  kind: lagged_donor_return
+  definition: >-
+    the admissible donor's recorded price change from strictly before the release to the
+    forecast origin minus the lag guard
+  assignment_rule: >-
+    the donor is the contract at the decision date the declared calendar places
+    immediately before the receiver's own, stating an identical payout predicate,
+    verified in force across the whole measured window
+  immediate_predecessor_only: true
+  same_meeting_siblings_are_not_donors: true
+  near_match_substitution_forbidden: true
+  endogenous_timing: false
+  endogenous_timing_reason: the donor identity and the meeting geometry are fixed from
+    the declared calendar and the venue's published payout text, before the release
+  what_it_does_not_identify: >-
+    a lagged association between two related contracts is not identification of a
+    mechanism. Both contracts load on the same policy expectation, so a common factor
+    moves both. Separating transmission from a shared factor needs the news vector plus
+    a design that excludes the common component, and the news vector is absent.
+
+sample:
+  id: declared_exposure_edges
+  universe_authority: configs/cohort_v2.yaml
+  graph_authority: configs/neighbor_graph_v2.yaml
+  relations_built:
+    - economic_exposure
+  relations_declared_not_built:
+    - payoff_identity
+    - mechanical_dependence
+  edge_conditions:
+    - id: immediate_predecessor_meeting
+      rule: the donor's decision date is the date the declared calendar places
+        immediately before the receiver's, and that date is dated by the calendar
+      failure_code: calendar_date_holds_no_contract
+      failure_handling: >-
+        a calendar date holding no contract is refused. The graph never reaches back a
+        further meeting to find one, because that would change the exposure being
+        measured.
+    - id: identical_payout_predicate
+      rule: the two contracts agree on every declared match field
+      match_fields:
+        - rate_definition
+        - threshold
+        - inequality
+        - yes_axis
+        - orientation
+      why_venue_and_ticker_are_absent: >-
+        venue, contract id and series name are deliberately not match fields. Ticker
+        resemblance is not settlement semantics, and a target-range contract and a
+        realized-rate contract are different claims even when their numbers coincide.
+    - id: read_from_the_venue_text
+      rule: the predicate is read from the venue's own archived contract text
+      parser: market_propagation.ingest.policy_predicates
+    - id: both_sides_live_across_the_window
+      rule: both contracts are listed at the forecast origin and still listed at tau + H
+      failure_code: receiver_not_open_at_origin
+      measured_refusals: 285
+    - id: verified_rule_vintage
+      rule: both contracts carry a rule version verified in force across the whole
+        interval, with a named verification method
+      required_record_fields:
+        - contract_id
+        - rule_hash
+        - source_url
+        - verified_by
+        - in_force_from
+        - in_force_to
+        - observed_at
+        - settlement_semantics
+      failure_code: rule_vintage_unverified
+      measured_refusals: 785
+  measured:
+    receiver_decisions: 1550
+    edges: 0
+    structurally_admissible_edges_under_a_diagnostic_sentinel: 623
+
+exclusions:
+  missing_is_null: true
+  observed_zero_is_evidence: true
+  fill_forward_forbidden: true
+  carried_forward_baseline_forbidden: true
+  graph_mask_reasons:
+    - code: rule_vintage_unverified
+      measured: 785
+      why: no contract carries a verified in-force rule interval
+    - code: resolved_before_forecast_origin
+      measured: 480
+      why: the contract had already settled, so it has no price to predict
+    - code: receiver_not_open_at_origin
+      measured: 285
+      why: the contract was not listed at the forecast origin
+    - code: no_matched_threshold
+      measured: 14
+      why: no candidate at the preceding meeting states an identical threshold
+    - code: calendar_date_holds_no_contract
+      why: the declared calendar dates no meeting in that contract's month, and the
+        graph does not reach back a further meeting
+    - code: unreadable_payout_text
+      measured: 1
+      why: the published payout text is not one of the declared readable forms, so no
+        predicate exists. It is refused rather than defaulted to a threshold of zero.
+    - code: rule_evidence_missing
+      why: the declared rule evidence source carries no per-contract record
+  ladder_mask_reasons:
+    - code: declared_ladder_columns_absent_from_the_forecast_table
+      columns:
+        - shock
+        - delayed_shock
+        - neighbor_lag
+        - neighbor_lag_control
+      why: >-
+        the news rung and the network rung cannot be fitted. The common comparison
+        sample is incomplete because a column a rung needs is absent, and that common
+        gap is reported apart from each rung's own gap rather than pooled with it.
+  column_present_but_null_is_not_a_column_absent_note: >-
+    `neighbor_lag` exists as a column and is null on every one of the 785 rows. It is
+    therefore reported as unsupplied rather than fitted as a constant, because fitting a
+    constant column would silently turn "no donor was admissible" into "the donor
+    carried no information".
+  contamination_stop:
+    - market_close_summarises_a_regional_venue_day
+    - scheduled_maintenance
+    - data_feed_outage
+  contamination_stop_reason: >-
+    each halts or summarises the venue's own day and none is a property of the release
+    or of the exposure edge.
+
+primary_specification:
+  id: conditional_predictive_propagation_at_300s
+  immutable_after_results: true
+  status: blocked
+  status_reason: 0 admissible edges; the fitted row set is empty
+  family: cpi
+  family_reason: >-
+    CPI is the primary confirmatory family and employment the prespecified secondary
+    family. Unavailable CPI does not silently promote employment to primary.
+  horizon_seconds: 300
+  lag_guard_seconds: 60
+  estimator: nested held-out comparison on one identical sample
+  ladder:
+    # Each kind's feature set contains the previous kind's, so the ladder is genuinely
+    # nested and the neighbour terms can only earn their place by adding admissible
+    # lagged information.
+    kinds:
+      - no_change
+      - own
+      - news
+      - network
+    baseline_kind: news
+    candidate_kind: network
+    loss: mae
+    minimum_mae_gain: 0.005
+    ridge_alphas:
+      - 0.001
+      - 0.01
+      - 0.1
+      - 1.0
+      - 10.0
+    rung_status_today:
+      - rung: no_change
+        status: blocked
+        reason: the_common_comparison_sample_is_incomplete_because_a_rung_column_is_absent
+      - rung: own
+        status: blocked
+        reason: the_common_comparison_sample_is_incomplete_because_a_rung_column_is_absent
+      - rung: news
+        status: blocked
+        reason: declared_ladder_columns_absent_from_the_forecast_table
+      - rung: network
+        status: blocked
+        reason: declared_ladder_columns_absent_from_the_forecast_table
+    common_missing_columns:
+      - delayed_shock
+      - neighbor_lag
+      - neighbor_lag_control
+      - shock
+  estimand: Delta = MAE_news - MAE_network over the declared receiver set, in absolute
+    probability units on the 0-1 scale
+  null_hypothesis: adding the donor's lagged return does not reduce held-out error beyond
+    the complete declared own-and-news baseline
+  decision_rule: >-
+    report the point estimate and a one-sided 95 % release-clustered lower bound on the
+    MAE gain. Promotion requires the bound above zero. A claim that the true gain exceeds
+    0.005 additionally requires the bound above 0.005. The estimate and a two-sided
+    interval are reported regardless of the decision.
+  baseline_completeness_requirement: >-
+    the baseline includes the same delayed direct-response structure as the network
+    rung, because otherwise a donor contract can proxy an omitted delayed direct
+    response and the neighbour term would earn its place spuriously.
+  no_post_result_threshold_reduction: true
+
+exploratory_namespace:
+  label: exploratory
+  members:
+    - id: reversed_edge_diagnostic
+      what: the same contrast with donor and receiver exchanged
+      status: not_run
+      not_run_reason: no edge exists in either direction
+      why_not_a_null: >-
+        feedback and a shared news shock can produce prediction in either direction, so
+        a reverse edge is evidence about mechanism rather than a falsification
+    - id: rule_matched_only_panel
+      what: >-
+        the panel the 623 structurally admissible edges would give if the rule gate were
+        satisfied
+      status: forbidden_as_an_estimate
+      claim_ceiling: >-
+        a count of what the gate withholds. The sentinel that produces it is explicitly
+        not evidence about any contract's rule vintage, so no estimate may be built on it
+    - id: leave_one_release_out
+      what: the primary contrast with each release dropped in turn
+      status: not_run
+      not_run_reason: no fitted primary estimate
+    - id: placebo_releases_matched_on_time_of_day
+      what: the same contrast on non-release instants matched on time of day
+      status: not_run
+      not_run_reason: no fitted primary estimate
+    - id: same_expiry_adjacent_strikes
+      what: the mechanical-dependence sensitivity between mutually exclusive strikes of
+        one meeting
+      status: declared_not_built
+      claim_ceiling: >-
+        an accounting check on a partition whose prices must sum to one. It is never
+        reported as propagation and it is never a donor edge
+    - id: calendar_block_out
+      what: the contrast with a whole calendar block removed
+      status: not_run
+      not_run_reason: no fitted primary estimate
+    - id: pre_release_movement
+      what: the donor and receiver's own pre-release drift, as a diagnostic
+      status: not_run
+      not_run_reason: no fitted primary estimate
+
+multiple_testing:
+  primary_family_size: 1
+  primary_correction: none_required_for_a_single_declared_contrast
+  declared_curve_family:
+    member_count: 5
+    correction: bonferroni_simultaneous_bands
+    level_rule: one minus (alpha divided by the number of declared horizons)
+  secondary_family:
+    member_count: 1
+    correction: bonferroni_over_declared_families
+    level: 0.975
+    why: >-
+      cpi and employment are the two declared families, so the two family contrasts are
+      corrected against each other
+  secondary_families_horizons_graphs_lags:
+    policy: frozen_multiplicity_or_exploratory_label
+    why: >-
+      the v1 freeze requires a frozen multiplicity policy for secondary families,
+      horizons, graphs and lags, or an exploratory label. Every such variant is labelled.
+  exploratory_correction: benjamini_hochberg
+  exploratory_q: 0.05
+  pseudo_replication_prohibited: true
+  pseudo_replication_note: >-
+    contracts are dependent observations of one release. Counting them as independent
+    trials inflates precision and is prohibited.
+
+clustering:
+  level: release
+  cluster_id_field: cluster_id
+  cluster_count_expected: 10
+  clusters_per_family: 5
+  authority: configs/study_v2.yaml
+  why_not_contract: >-
+    one contract is a receiver for several releases and a donor for others, so contract
+    clusters are both few and overlapping. The release is the declared independent unit
+    and the only one with an unambiguous membership rule.
+  few_cluster_handling: report broad intervals and a finite-sample sensitivity; no
+    interval below 3 clusters with a design row
+  network_dependence_note: >-
+    an edge is between two related contracts, so the error terms of a donor and its
+    receiver are correlated through a common policy-expectation factor. The cluster
+    bootstrap must draw releases, not edges, or it would resample both ends of the same
+    dependence.
+
+bootstrap:
+  unit: whole_release
+  resampling: with_replacement_over_release_clusters
+  draws_per_interval: 200
+  seed: 20260913
+  resampling_seed: 20260914
+  seed_authority: configs/study_v2.yaml
+  keep_intact_within_a_drawn_release: >-
+    every edge, every receiver's own and donor windows, and every declared horizon of
+    that release
+  prohibited_units:
+    - iid_resampling_of_individual_quote_snapshots
+    - row_level_bootstrap_within_a_release
+    - edge_as_an_independent_unit
+    - contract_as_an_independent_unit
+  why: resampling edges would treat two ends of one dependence as two observations, and
+    resampling rows inside a release would break the release-level shock structure.
+
+dependencies:
+  - id: declared_decision_calendar
+    provides: the exposure axis
+    status: present
+    measured: 10 declared FOMC meeting dates covering 2024-11-07 to 2025-12-10
+    evidence: configs/neighbor_graph_v2.yaml
+    caveat: >-
+      the calendar is declared rather than verified from a fetched source
+      (`verified_from_a_fetched_source: false`). It is a declared input, and the file
+      says so.
+  - id: readable_payout_predicate
+    provides: a comparable threshold identity
+    status: present
+    measured: 155 contracts carry a readable predicate and a dated month; 534 are
+      refused, 533 of them because the declared calendar dates no meeting in their month
+    evidence: reports/source_feasibility.md
+  - id: rule_vintage_record
+    provides: every admissible edge
+    status: absent
+    measured: 785 receiver-side refusals; 0 edges; 623 structurally admissible
+    evidence: reports/contract_rule_registry.json, .audit/study-v3/structural_probe.json
+    why_it_is_absent: >-
+      the registry is a specification document and carries no per-contract rule record.
+      The venue's historical endpoint returns rule text, but its `updated_time` is
+      months after settlement, so the retrieved text is a current-state record rather
+      than a contemporaneous artifact and the endpoint exposes no revision history.
+      That is direct evidence for `recorded_open_time_is_not_a_rule_bound`, not merely
+      an assertion of it.
+    inadmissible_substitutes:
+      - settlement_outcomes
+      - current_rule_text
+      - a_contracts_own_listing_window
+      - a_regulatory_filing_that_names_no_strike_event_or_market
+  - id: point_in_time_expectation_source
+    provides: the news rung, and separation of transmission from a shared factor
+    status: absent
+    measured: 9 of 10 releases have a pre-release archived capture and none is bound as
+      a validated expectation record; `cpi_2025_01` was read in full and carries the
+      headline and core month-on-month consensus
+    evidence: reports/source_feasibility.md, .audit/astra-repair/evidence_three_gates.md
+    effect: >-
+      the news rung is unestimable, so the declared baseline does not exist. The network
+      rung is compared against a baseline the sample cannot supply, which is a second
+      independent reason this study cannot run today.
+  - id: simultaneously_live_donor_and_receiver
+    provides: a measurable edge
+    status: effectively_absent
+    measured: 480 receivers resolved before the forecast origin and 285 were not open at
+      it; under a permissive predecessor rule 1 of 10 releases yields an anchor, a
+      target and a donor read
+    evidence: .audit/astra-repair/evidence_three_gates.md
+  - id: transaction_tape_calibration
+    provides: the observed behaviour of the promotion rule
+    status: measured
+    verdict: inconclusive
+    measured: 8 estimable nulls promoted in 0 of 200 repetitions each with a one-sided
+      upper bound of 0.0251 at simultaneous level 0.99375 against a 0.05 ceiling;
+      recovery 196 of 200 with a lower bound of 0.9548 against a 0.80 target;
+      `resolution_pause` and `spread_only` emit no comparison row at any repetition
+      count
+    evidence: configs/study_v2.yaml, data/calibration/calibration_certificate.json
+    why_it_matters_here: >-
+      it calibrates the promotion rule this study's ladder would use, on a synthetic
+      process. It does not unblock the graph, which still admits no edge, and it is not
+      evidence about any real contract.
+    superseded_call: >-
+      the earlier 48-repetition `network_falsification` call is recorded as insufficient
+      in both frozen configs: it counts a gain-threshold event on the quote/simulator
+      path rather than the declared transaction observation process, and at 48
+      repetitions its one-sided bounds cannot separate a 0.05 ceiling from a 0.80
+      target.
+
+claim_limits:
+  may_claim:
+    - the graph is built over real contracts with predicates read from the venue's own text
+    - the graph refuses every edge, and the refusal is per contract with a named reason
+    - the gap has a measured size of 623 structurally admissible edges, sized with a
+      diagnostic sentinel that is explicitly not evidence
+    - the calibration measures the promotion rule on a declared synthetic process, with
+      an inconclusive verdict
+  may_not_claim:
+    - id: conditional_predictive_propagation
+      why: >-
+        0 admissible edges. No donor exists, so no lagged donor term can be formed and
+        no held-out gain can be computed. This is the study's headline claim and it is
+        not made.
+    - id: causal_transmission
+      why: >-
+        no intervention and no defended natural experiment. The relation type is
+        `economic_exposure`, which the registry permits for cohort membership and
+        heterogeneity analysis and explicitly does not permit as causal transmission.
+    - id: treating_an_exposure_edge_as_a_payoff_identity
+      why: >-
+        an exposure edge states a mechanism, not a shared payout. Treating the two as
+        the same is prohibited by the registry and would licence a coherence or pooling
+        claim the evidence does not support.
+    - id: informative_delay_or_lead_estimate
+      why: >-
+        one admissible pair under a permissive rule cannot estimate anything, and a
+        permissive rule is not the declared rule
+    - id: same_meeting_cross_strike_effects_as_propagation
+      why: those strikes partition one outcome by construction, so their relation is an
+        accounting identity
+    - id: anything_about_what_a_live_participant_knew
+      why: source alignment is retrospective
+    - id: executable_arbitrage_across_strikes_or_meetings
+      why: >-
+        no book, no depth, no fee layer and no order anywhere in this programme. An
+        infeasible quoted box is a coherence finding under stated assumptions, not an
+        arbitrage.
+    - id: generalisation_to_policy_markets_at_large
+      why: >-
+        ten releases, four declared series and one declared calendar. More releases do
+        not substitute for the rule-vintage dependency: every added release brings
+        contracts whose vintages are equally unattested.
+
+provenance:
+  read_before_writing:
+    - reports/study_execution_status.md
+    - reports/source_feasibility.md
+    - reports/empirical_study/paper.md
+    - reports/preregistration_v2.md
+    - reports/contract_rule_registry.json
+    - .audit/astra-repair/evidence_three_gates.md
+    - .audit/study-v3/structural_probe.json
+    - configs/study_v2.yaml
+    - configs/event_windows_v2.yaml
+    - configs/cohort_v2.yaml
+    - configs/neighbor_graph_v2.yaml
+    - src/market_propagation/neighbors.py
+  compatible_with_frozen_declarations: true
+  supersedes: none
+  changes_after_results_are_exploratory: true

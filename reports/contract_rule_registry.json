@@ -1,0 +1,492 @@
+{
+  "registry_id": "contract_rule_registry",
+  "registry_version": "1",
+  "spec_version": "v1",
+  "frozen_on": "2026-09-13",
+  "status": "frozen_local_unregistered",
+  "freeze_basis": "implementation_time_local_specification_freeze",
+  "external_registration": "none_claimed",
+  "human_owner_approval_claimed": false,
+  "empirical_results_recorded": false,
+  "empirical_results_note": "This registry holds rule-matching definitions and empty verified-match sets. It records no estimates, and later synthetic software runs add no empirical result.",
+  "effect_units_pointer": {
+    "owner_file": "configs/study_v1.yaml",
+    "key": "thresholds.effect_units",
+    "value": "absolute_probability_units",
+    "note": "Thresholds are absolute probability units on the 0 to 1 scale; 0.01 equals 1 percentage point and 0.005 equals 0.5 percentage points. The registry never rescales them."
+  },
+  "uncertainty_unit_pointer": {
+    "owner_file": "configs/study_v1.yaml",
+    "key": "estimators.uncertainty_independent_unit",
+    "value": "economic_release",
+    "note": "The independent resampling unit is the whole economic release. Snapshot or row level resampling within a release is pseudo replication and is prohibited."
+  },
+  "purpose": "List every field that must agree before two contracts are treated as one claim, and hold the verified match sets.",
+  "no_verified_match_claim": true,
+  "verified_match_policy": "Every list named verified_actual_matches or verified_matches is empty until an independent rule audit records a match. An empty list means no match was verified. It does not mean no match exists.",
+  "candidate_discovery_owner": "PublicIngestion",
+  "this_file_records_eligible_market_ids": false,
+  "relation_types": [
+    {
+      "relation_id": "logical",
+      "definition": "The payoff relationship follows from the contract rules themselves.",
+      "examples": [
+        "complement",
+        "mutually_exclusive_and_exhaustive_buckets",
+        "nested_thresholds",
+        "genuinely_identical_cross_venue_claim"
+      ],
+      "permits": [
+        "coherence_distance_diagnostic",
+        "quote_disagreement_reporting"
+      ],
+      "does_not_permit": [
+        "pooling_across_venues_without_a_verified_match"
+      ]
+    },
+    {
+      "relation_id": "exposure",
+      "definition": "A stated macro mechanism links a release and a contract, without a payoff identity.",
+      "examples": [
+        "cpi_release_and_later_policy_decision",
+        "payrolls_release_and_growth_threshold"
+      ],
+      "permits": [
+        "cohort_membership",
+        "heterogeneity_analysis"
+      ],
+      "does_not_permit": [
+        "treating_the_edge_as_a_payoff_identity",
+        "treating_the_edge_as_causal_transmission"
+      ]
+    },
+    {
+      "relation_id": "predictive",
+      "definition": "A training-only lag relationship that survives the prespecified controls.",
+      "examples": [
+        "neighbor_lagged_information_improving_a_held_out_forecast"
+      ],
+      "permits": [
+        "predictive_edge_reporting"
+      ],
+      "does_not_permit": [
+        "causal_label",
+        "evidence_level_promotion_without_a_separate_design"
+      ]
+    }
+  ],
+  "matching_fields": [
+    {
+      "position": 1,
+      "field": "venue",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "venue contract metadata",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 2,
+      "field": "contract_id",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "venue contract metadata",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 3,
+      "field": "event_id",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "configs/cohort.yaml",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 4,
+      "field": "family",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "configs/cohort.yaml release_families",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 5,
+      "field": "reference_period",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality_after_canonicalization_to_iso_year_month",
+      "failure_if_different": "same_title_different_period_is_a_different_claim",
+      "source_of_truth": "archived initial release payload title and cohort entry",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 6,
+      "field": "source",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "failure_if_different": "a_different_publication_source_is_a_different_claim",
+      "source_of_truth": "external release specification",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 7,
+      "field": "units",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "external release specification",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 8,
+      "field": "operator",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "failure_if_different": "strict_and_non_strict_thresholds_are_different_claims",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 9,
+      "field": "threshold",
+      "json_type": "decimal_or_null",
+      "required": true,
+      "comparison": "exact_decimal_equality",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 10,
+      "field": "lower",
+      "json_type": "decimal_or_null",
+      "required": true,
+      "comparison": "exact_decimal_equality_when_present",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 11,
+      "field": "upper",
+      "json_type": "decimal_or_null",
+      "required": true,
+      "comparison": "exact_decimal_equality_when_present",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 12,
+      "field": "rounding",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "failure_if_different": "a_different_rounding_rule_moves_the_boundary",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 13,
+      "field": "vintage",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "failure_if_different": "initial_release_and_revised_value_are_different_claims",
+      "source_of_truth": "venue contract rules and archived payload",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 14,
+      "field": "timezone",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality_of_iana_name",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 15,
+      "field": "deadline",
+      "json_type": "string_iso8601_or_null",
+      "required": true,
+      "comparison": "exact_instant_equality_after_timezone_conversion",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 16,
+      "field": "settlement",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 17,
+      "field": "currency",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "venue contract rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 18,
+      "field": "exceptional_policy",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "failure_if_different": "a_different_tie_break_or_void_policy_changes_the_payout",
+      "source_of_truth": "versioned venue resolution rules",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 19,
+      "field": "rule_hash",
+      "json_type": "string",
+      "required": true,
+      "comparison": "exact_string_equality",
+      "source_of_truth": "archived resolution rule version",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 20,
+      "field": "open_time",
+      "json_type": "string_iso8601_or_null",
+      "required": false,
+      "comparison": "reported_in_differences_but_does_not_by_itself_null_a_match",
+      "source_of_truth": "venue contract metadata",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 21,
+      "field": "close_time",
+      "json_type": "string_iso8601_or_null",
+      "required": false,
+      "comparison": "reported_in_differences_and_used_by_event_window_rules",
+      "source_of_truth": "venue contract metadata",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 22,
+      "field": "resolve_time",
+      "json_type": "string_iso8601_or_null",
+      "required": false,
+      "comparison": "reported_in_differences",
+      "source_of_truth": "venue contract metadata",
+      "verified_actual_matches": []
+    },
+    {
+      "position": 23,
+      "field": "rule_available_at",
+      "json_type": "string_iso8601_or_null",
+      "required": true,
+      "comparison": "exact_instant_equality_when_present_and_must_not_be_after_the_decision_time",
+      "source_of_truth": "archived rule history",
+      "verified_actual_matches": []
+    }
+  ],
+  "equivalence_gate": {
+    "all_required_fields_must_match": true,
+    "similar_titles_sufficient": false,
+    "title_text_is_a_lead_only": true,
+    "required_outcome": "two contracts are one claim only when every required field agrees",
+    "on_any_mismatch": "record_both_contracts_as_distinct_claims_and_report_the_difference"
+  },
+  "exact_match_function_contract": {
+    "name": "exact_match",
+    "signature": "exact_match(left: Contract, right: Contract) -> dict",
+    "returns": {
+      "matches": "boolean",
+      "differences": "list of differing fields with both values recorded"
+    },
+    "differences_are_always_reported": true,
+    "differences_suppressed_when_matches_is_true": false
+  },
+  "coherence_checklist": {
+    "distance_definition": "minimum_maximum_distance_to_the_quoted_box_over_the_simplex",
+    "solver": "scipy.optimize.linprog",
+    "weights": "simplex",
+    "inputs": "synchronized_valid_quotes_only",
+    "synchronization_and_validity_enforced_by": "caller",
+    "uncertainty_unit": "economic_release",
+    "uncertainty_rule": "Coherence uncertainty resamples whole releases and keeps each release's synchronized coherence curve intact. Individual synchronized quote snapshots are dependent observations of one release and are never resampled as independent units, because that is pseudo replication.",
+    "supports": [
+      "fractional_payouts",
+      "strict_and_non_strict_thresholds",
+      "rounding"
+    ],
+    "projected_prices_never_substituted_for_raw_observations": true,
+    "infeasibility_meaning": "quote_coherence_finding_under_stated_assumptions_not_an_executable_arbitrage",
+    "binary_scoring_rejects_exceptional_payouts": true,
+    "half_payout_relabelled_as_binary": false
+  },
+  "logical_families": [
+    {
+      "family_key": "cpi_threshold_ladder",
+      "relation_id": "logical",
+      "relation_detail": "nested_thresholds",
+      "expected_members": "unknown_until_ingestion",
+      "verified_matches": [],
+      "verified_match_count": 0
+    },
+    {
+      "family_key": "cpi_outcome_buckets",
+      "relation_id": "logical",
+      "relation_detail": "mutually_exclusive_and_exhaustive_buckets",
+      "expected_members": "unknown_until_ingestion",
+      "verified_matches": [],
+      "verified_match_count": 0
+    },
+    {
+      "family_key": "payrolls_threshold_ladder",
+      "relation_id": "logical",
+      "relation_detail": "nested_thresholds",
+      "expected_members": "unknown_until_ingestion",
+      "verified_matches": [],
+      "verified_match_count": 0
+    },
+    {
+      "family_key": "unemployment_rate_buckets",
+      "relation_id": "logical",
+      "relation_detail": "mutually_exclusive_and_exhaustive_buckets",
+      "expected_members": "unknown_until_ingestion",
+      "verified_matches": [],
+      "verified_match_count": 0
+    },
+    {
+      "family_key": "cross_venue_identical_claims",
+      "relation_id": "logical",
+      "relation_detail": "genuinely_identical_cross_venue_claim",
+      "expected_members": "unknown_until_ingestion",
+      "verified_matches": [],
+      "verified_match_count": 0,
+      "blocked_by": "polymarket_access_timed_out"
+    },
+    {
+      "family_key": "complement_pairs",
+      "relation_id": "logical",
+      "relation_detail": "complement",
+      "expected_members": "unknown_until_ingestion",
+      "verified_matches": [],
+      "verified_match_count": 0
+    }
+  ],
+  "exposure_families": [
+    {
+      "family_key": "cpi_release_to_policy_decision",
+      "relation_id": "exposure",
+      "mechanism": "the release updates information about a later policy decision",
+      "verified_matches": [],
+      "verified_match_count": 0
+    },
+    {
+      "family_key": "employment_release_to_policy_decision",
+      "relation_id": "exposure",
+      "mechanism": "the release updates information about a later policy decision",
+      "verified_matches": [],
+      "verified_match_count": 0
+    },
+    {
+      "family_key": "release_to_growth_threshold",
+      "relation_id": "exposure",
+      "mechanism": "the release updates information about a later macro outcome",
+      "verified_matches": [],
+      "verified_match_count": 0
+    }
+  ],
+  "predictive_families": [
+    {
+      "family_key": "training_only_lag_edges",
+      "relation_id": "predictive",
+      "mechanism": "lagged cross_contract information surviving the prespecified controls",
+      "verified_matches": [],
+      "verified_match_count": 0,
+      "fitted_only_inside_training": true
+    }
+  ],
+  "excluded_relations": [
+    {
+      "relation": "price_correlation_as_a_payoff_identity",
+      "action": "excluded"
+    },
+    {
+      "relation": "implication_treated_as_causal_transmission",
+      "action": "excluded"
+    },
+    {
+      "relation": "cross_venue_pooling_without_a_verified_match",
+      "action": "excluded"
+    },
+    {
+      "relation": "high_dimension_joint_state_space_over_unrelated_variables",
+      "action": "excluded"
+    }
+  ],
+  "contract_record_fields_needed_for_audit": [
+    "venue",
+    "contract_id",
+    "event_id",
+    "family",
+    "reference_period",
+    "source",
+    "units",
+    "operator",
+    "threshold",
+    "lower",
+    "upper",
+    "rounding",
+    "vintage",
+    "timezone",
+    "deadline",
+    "settlement",
+    "currency",
+    "exceptional_policy",
+    "open_time",
+    "close_time",
+    "resolve_time",
+    "rule_hash",
+    "provenance",
+    "rule_available_at"
+  ],
+  "audit_gates": [
+    {
+      "gate_id": "R0",
+      "name": "rule_capture",
+      "required_evidence": "each candidate contract has a versioned archived rule and a rule_hash",
+      "failure_action": "exclude the contract from logical families"
+    },
+    {
+      "gate_id": "R1",
+      "name": "field_completeness",
+      "required_evidence": "every required matching field is populated for both sides of a candidate pair",
+      "failure_action": "leave the pair unmatched and record the missing fields"
+    },
+    {
+      "gate_id": "R2",
+      "name": "difference_report",
+      "required_evidence": "exact_match returns the full difference list for every candidate pair reviewed",
+      "failure_action": "keep the pair out of the registry"
+    }
+  ],
+  "open_questions": [
+    "which venue series produced the sampled pre_release_close times reported by a peer on 2026-09-13",
+    "whether any cross_venue pair passes every required field",
+    "what the archived rule history exposes for the relevant rule versions",
+    "whether settlement timing and resolve_time are documented per contract or per event"
+  ],
+  "provenance": {
+    "field_list_source": "project plan contract matching checklist and the frozen interface contract Contract record",
+    "sources_read": [
+      "prediction_market_information_diffusion_plan.md",
+      ".audit/interface-contract.txt",
+      "https://docs.kalshi.com/getting_started/historical_data"
+    ],
+    "read_on": "2026-09-13",
+    "verified_matches_at_freeze": 0
+  }
+}

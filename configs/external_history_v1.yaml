@@ -1,0 +1,327 @@
+# Pipeline configuration for the external-history path.
+#
+# This is an operational and measurement specification, not an empirical
+# preregistration. It names the local inputs, the extraction bounds, the clock
+# mode and the masking rules a run applies. A registered estimation needs the
+# separate analysis specification named under `registered_estimation` below, and
+# each run manifest records both hashes so a result can be traced to the
+# measurement rules it was produced under.
+#
+# Every input is named explicitly. No command discovers a dataset as an implicit
+# fallback, so a run that finds a layer missing reports a missing layer instead
+# of quietly reading a different one.
+
+config_version: external_history_v1
+# Human-readable statement of what this file governs, repeated in run manifests.
+scope: >-
+  Bounded extraction, normalization and masking of external historical prediction
+  market archives into verified contract records, release-linked coverage and
+  explicitly masked transaction-price panels.
+
+inputs:
+  root: data/external
+  # Named archive layers. `path_pattern` is relative to `root` and is the only
+  # route to a shard; `role` states what the layer is evidence for, and
+  # `input_class` places it in one of the four input classes the pipeline
+  # reports on. A layer whose glob matches nothing is reported missing.
+  layers:
+    - name: kalshi_trades
+      path_pattern: kalshi-trades/trades-*.parquet
+      input_class: external_historical_archive
+      role: source_trades
+      venue: kalshi
+      producer: TrevorJS, incorporating Andrew Becker's collection and Kalshi API data
+      license: CC-BY-4.0
+      time_column: created_time
+      time_unit: timestamp_us_utc
+    - name: kalshi_markets
+      path_pattern: kalshi-trades/markets-*.parquet
+      input_class: external_historical_archive
+      role: market_metadata_snapshot
+      venue: kalshi
+      producer: TrevorJS, incorporating Andrew Becker's collection and Kalshi API data
+      license: CC-BY-4.0
+      time_column: created_time
+      time_unit: timestamp_us_utc
+    - name: polymarket_orderfilled
+      path_pattern: polymarket-v1/OrderFilled/*.parquet
+      input_class: external_historical_archive
+      role: raw_nominal_fills
+      venue: polymarket
+      producer: Boka Qin and Rui Yang, Polymarket-v1 Database
+      license: CC-BY-4.0
+      time_column: block_timestamp
+      time_unit: epoch_seconds
+    - name: polymarket_daily_aligned
+      path_pattern: polymarket-v1/daily_aligned/*.parquet
+      input_class: external_historical_archive
+      role: cleaned_standard_binary
+      venue: polymarket
+      producer: Boka Qin and Rui Yang, Polymarket-v1 Database
+      license: CC-BY-4.0
+      time_column: block_timestamp
+      time_unit: epoch_seconds
+    - name: polymarket_daily_aligned_multi
+      path_pattern: polymarket-v1/daily_aligned_multi/*.parquet
+      input_class: external_historical_archive
+      role: cleaned_neg_risk
+      venue: polymarket
+      producer: Boka Qin and Rui Yang, Polymarket-v1 Database
+      license: CC-BY-4.0
+      time_column: block_timestamp
+      time_unit: epoch_seconds
+    - name: polymarket_ctf
+      path_pattern: polymarket-v1/CTF/*.parquet
+      input_class: external_historical_archive
+      role: lifecycle_records
+      venue: polymarket
+      producer: Boka Qin and Rui Yang, Polymarket-v1 Database
+      license: CC-BY-4.0
+      time_column: null
+      time_unit: null
+    - name: forecast_snapshots
+      path_pattern: forecast-snapshots-*/snapshot_dataset.parquet
+      input_class: external_historical_archive
+      role: low_frequency_forecast_examples
+      venue: kalshi
+      producer: chestnutforty, kalshi_events namespace
+      license: MIT
+      time_column: snapshot_time
+      time_unit: epoch_seconds
+
+  # The sealed archived-release dataset the coverage stage reads the ten
+  # development releases from. Verified against its manifest before use; a
+  # missing or disagreeing record blocks that event instead of falling back to
+  # the network.
+  release_dataset: data/public/bls-normalized/releases.parquet
+
+  # Rule and lifecycle evidence for the contracts a coverage run considers.
+  rule_evidence_source: reports/contract_rule_registry.json
+
+  # Contract-rule evidence produced by the bounded public audit, when present.
+  # Absent evidence leaves a rule-covered candidate out of the primary cohort
+  # rather than admitting it on a trade-history join.
+  audit_coverage: data/public/final-audit/coverage.json
+
+# The primary policy series the coverage stage starts from. These are series
+# names drawn from the study's own configuration, not keywords matched against
+# market titles.
+policy_series:
+  - KXFED
+  - FED
+  - KXFEDDECISION
+  - FEDDECISION
+
+# Which layer each venue's trade normalization reads, and which layers are
+# lineage-only. The raw OrderFilled layer supports raw-volume reconciliation; it
+# is never added to a cleaned layer as extra observations.
+normalization:
+  kalshi_layer: kalshi_trades
+  polymarket_layer: polymarket_daily_aligned
+  polymarket_lineage_layers:
+    - polymarket_orderfilled
+    - polymarket_ctf
+  # Neg Risk markets are a distinct cohort with parent grouping, never pooled
+  # with Standard Binary rows.
+  polymarket_neg_risk_layer: polymarket_daily_aligned_multi
+  # Polymarket prices are float64 in the archive. Conversion to Decimal cannot
+  # recover lost source precision, so a documented tolerance is required before
+  # two prices are called equal.
+  polymarket_price_tolerance: 1.0e-9
+  # The documented outcome axis. `price` is a token's own payout price; the
+  # event axis is derived from `outcome_seq`, never from the eventual winner.
+  polymarket_event_axis: outcome_seq_1_is_price
+  kalshi_event_axis: yes_price_is_event_axis
+
+extraction:
+  # Bounded development window. Shards are selected by their actual timestamp
+  # statistics, not by filename, because Polymarket day partitions are UTC+8.
+  window_start: "2025-01-01T00:00:00Z"
+  window_end: "2025-05-31T23:59:59Z"
+  max_events: 10
+  # Rows read per partition before the extraction stops and reports the bound it
+  # applied. This caps memory; it is not a sampling rule and it never silently
+  # truncates a released panel.
+  max_rows_per_partition: 250000
+  # Bound on contracts considered per event when rules are joined.
+  max_contracts_per_event: 40
+  # Read the archives through DuckDB projection and filter pushdown; never
+  # materialize a billion-row layer.
+  read_batch_size: 65536
+
+clock:
+  # `source` aligns on the venue's recorded time. It is retrospective alignment
+  # and is not evidence of what a live participant knew. `usable` is reported
+  # `unidentifiable` for these rows: no receipt evidence exists, so no usable
+  # interval is invented and no empty disagreement result is reported as
+  # agreement. `assumed_delay` is an explicit sensitivity scenario.
+  mode: source
+  permitted_modes:
+    - source
+    - usable
+    - assumed_delay
+  # Declared delay used only when mode is assumed_delay. Never a measured
+  # receipt availability.
+  assumed_delay_seconds: null
+
+response:
+  # Trade-age choices, applied as caps on `last_trade_age_seconds`. These are
+  # transaction recency, not feed delay or quote freshness, and they are
+  # provisional pipeline defaults rather than inherited quote-validity evidence.
+  pre_window_seconds: 1800
+  post_window_seconds: 3600
+  baseline_max_age_seconds: 120
+  endpoint_max_age_seconds: 120
+  horizons_seconds:
+    - 60
+    - 300
+    - 900
+    - 1800
+    - 3600
+  primary_horizon_seconds: 300
+  # A response requires a new post-release transaction. An endpoint with no such
+  # trade is `no_post_release_trade`, never a zero carried forward.
+  require_post_release_trade: true
+  # Multiple prints sharing the finest supported timestamp become one declared
+  # tie-group observation, aggregated by the unweighted mean event-axis price.
+  tie_group_aggregation: unweighted_mean_of_event_axis_price
+  report_endpoint_envelope: true
+  # No implicit widening, smoothing, interpolation, or post-close filling.
+  widening_or_filling: prohibited
+
+# The required baseline capability, stated as a model specification rather than
+# a prose intention. The existing forecast ladder hardcodes `shock` and
+# `delayed_shock`, so without this block the only fitting path available is one
+# that reads a surprise. No surprise is verified for these releases, and filling
+# those columns with an invented number is prohibited.
+timing_only:
+  model_kind: timing_only
+  purpose: >-
+    Estimate the transaction response from release-family and calendar structure
+    plus admissible pre-event state alone. This is the baseline every richer
+    model must beat, and it stays available when expectations are missing.
+  admissible_covariates:
+    - horizon_seconds
+    - family_indicator
+    - pre_event_price
+    - bounded_price_curvature
+    - boundary_proximity
+    - pre_release_activity
+  definitions:
+    pre_event_price: the baseline transaction price, a probability on the 0-1 scale
+    bounded_price_curvature: p * (1 - p), the bounded-price geometry of the baseline price
+    boundary_proximity: min(p, 1 - p), the distance to the probability boundary
+    pre_release_activity: the count of pre-window transactions for this event and contract
+  prohibited_covariates:
+    - shock
+    - delayed_shock
+    - surprise
+    - expectation_gap
+    - winning_outcome_label
+    - resolution_status
+    - any_post_event_quantity_or_price
+  prohibited_note: >-
+    `pre_event_price` and the two geometry terms are price covariates, not
+    distance to a rate or inflation strike. An underlying-moneyness term needs an
+    expectation and a strike in the same economic units, and neither is verified
+    for these releases, so none is constructed.
+  aggregation_unit: economic_release
+  equal_weight_economic_events: true
+  contracts_inside_an_event_share_its_weight: true
+  separate_by_family: true
+  coefficient_families:
+    - cpi
+    - employment
+  family_coefficients_reported_separately: true
+  alphas: [0.001, 0.01, 0.1, 1.0, 10.0]
+  loss: event_weighted_mean_absolute_error
+  meaningful_response_size: 0.01
+  meaningful_gain_size: 0.005
+  meaningful_size_status: scientific_choices_requiring_power_assessment
+  surprise_slopes_enabled: false
+  missing_surprise_effect: disables_only_the_surprise_slope
+  alternative_weights_note: >-
+    Volume weighting changes the estimand and must be declared separately. It is
+    disabled here because quantity is unverified for the cleaned external layer.
+
+coverage:
+  report_missing_cells: true
+  families:
+    - cpi
+    - employment
+  # Post-event activity may determine whether an endpoint is observed. It may
+  # never retrospectively select the candidate universe.
+  candidate_selection_basis: pre_event_information_only
+  calendar_timezone: America/New_York
+
+capabilities:
+  # Declared independently, never inferred from the presence of a file. A run
+  # overrides a declaration it observes and records the reason a capability is
+  # unknown. An archive existing does not turn a capability on.
+  historical_trades: true
+  historical_quotes: false
+  receipt_clock: false
+  rule_vintage_verified: unknown
+  initial_release_verified: true
+  expectation_verified: false
+  economic_size_verified: false
+  notes:
+    historical_quotes: >-
+      No external layer holds order-book snapshots, quotes, cancellations or
+      resting depth. Spread, depth and coherence recovery stay disabled.
+    receipt_clock: >-
+      External trade rows carry no receipt evidence, so availability is unknown
+      and no usable interval is established.
+    economic_size_verified: >-
+      The cleaned Polymarket layers omit token quantity and Kalshi `count` is a
+      contract count on its own axis. Quantity-weighted flow stays disabled
+      until a defensible reconstruction exists.
+
+masking:
+  # Exclusions that make a panel row invalid, each with the reason it carries.
+  exclusion_reasons:
+    - missing_baseline
+    - no_post_release_trade
+    - endpoint_beyond_cap
+    - baseline_beyond_cap
+    - contract_closed_before_release
+    - closure_before_endpoint
+    - rule_evidence_missing
+    - rule_version_unknown
+    - contaminated_window
+    - ambiguous_outcome_axis
+    - size_unavailable
+    - release_time_unverified
+  # A quote-only column is absent or null in this panel, never zero.
+  quote_columns_present: false
+  # Closed direct contracts produce a null response with a closure reason.
+  closed_direct_contract_policy: null_response_with_reason
+
+# Optional registered-estimation specification. Required before any confirmatory
+# fit; absent is normal during development.
+registered_estimation:
+  analysis_spec: configs/study_v1.yaml
+  spec_status: development
+  confirmatory_estimation_permitted: false
+  note: >-
+    The v2 study, cohort, window and preregistration files this pipeline would
+    freeze for confirmatory work do not exist yet. Development runs use the
+    analysis spec named here for structure only and claim no registered result.
+
+outputs:
+  # Real outputs go under a run-specific directory, kept separate from synthetic
+  # fixtures and from the raw external inputs.
+  root: data/derived/external
+  run_directory_template: "{run_id}"
+  # Conflicting content fails rather than overwriting a frozen run.
+  overwrite_existing: false
+  interrupted_partition_recovery: restart_without_duplicate_output
+
+reproducibility:
+  record_source_tree_hash: true
+  record_selected_shards: true
+  record_input_hashes: true
+  record_tool_versions: true
+  record_peak_memory: true
+  record_elapsed_seconds: true
+  seeds: [20260915]

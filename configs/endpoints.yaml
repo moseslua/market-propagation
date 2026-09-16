@@ -1,0 +1,538 @@
+# Endpoint registry for the read-only public acquisition layer.
+#
+# Every entry records what was actually observed during implementation on
+# 2026-09-13, not what the documentation implies. Three field families carry that
+# distinction:
+#
+#   access.status        observed reachability from this environment
+#   docs.hash            SHA-256 of the documentation artifact as fetched
+#   schema.flavour       the field naming the endpoint really returned
+#
+# Documentation is mutable. The hashes below pin the exact revision these
+# assumptions were derived from, so a later reader can detect that the source
+# changed rather than discovering it through a silent parse failure.
+#
+# `search.observed_queries` lists the read-only probes used to establish these
+# facts. All are GET.
+
+registry_version: 1
+recorded_at: "2026-09-13"
+recorded_by: "PublicIngestion worker"
+verification_note: >-
+  Software validation commands were not run in this workstream, by instruction.
+  The reachability and schema facts here come from read-only network probes made
+  during authoring, and each is labelled with the observation that produced it.
+
+access_policy:
+  methods_allowed: ["GET"]
+  credentials_used: none
+  authenticated_endpoints_implemented: none
+  notes:
+    - >-
+      No API key, account, session or token is used anywhere in this package. There
+      is no code path that authenticates, and no workaround for an access
+      restriction.
+    - >-
+      Kalshi's WebSocket order-book channel requires an authenticated handshake and
+      is therefore deliberately not implemented. This is why fine-grained live book
+      capture is unavailable for Kalshi in this project.
+    - >-
+      No order, cancel, amend, RFQ or portfolio route is referenced anywhere in the
+      package, so there is no accidental write path.
+    - >-
+      Where an endpoint refuses access the client records a blocked status with
+      `empty_result: false`. An access failure is never converted into an empty
+      successful result.
+
+venues:
+  kalshi:
+    base_url: "https://external-api.kalshi.com/trade-api/v2"
+    alternate_base_url: "https://api.elections.kalshi.com/trade-api/v2"
+    documentation: "https://docs.kalshi.com"
+    access:
+      status: reachable
+      authentication: none_required
+      observed_status_code: 200
+      observed_at: "2026-09-13"
+      evidence: >-
+        Live responses observed for /historical/cutoff, /markets,
+        /historical/markets, /series/{ticker},
+        /historical/markets/{ticker}/candlesticks and /historical/trades.
+    openapi_version: "3.30.0"
+    docs:
+      base: "https://docs.kalshi.com"
+      # The .md alternate serves the raw markdown source; hashed as fetched.
+      artifacts:
+        - path: "/getting_started/historical_data.md"
+          bytes: 7694
+          hash: "5b414e53d560d723455bf0705bac1b8a3ad0c71da63aeb75ea78315f3612701d"
+          topic: live/historical partition and moving cutoffs
+        - path: "/getting_started/pagination.md"
+          bytes: 5294
+          hash: "a98a22ca4166c9dee0870a0aa7254fe908773585fe5f190c6aaea786b8f23c3b"
+          topic: cursor pagination
+        - path: "/getting_started/rate_limits.md"
+          bytes: 12713
+          hash: "68a23e99ef7ad01c552e66257b3c9146f1239f3f14f4d651ec08f56588319341"
+          topic: token-bucket rate limits, 429 behaviour
+        - path: "/getting_started/quick_start_market_data.md"
+          bytes: 8454
+          hash: "31dec99d496b8343d2fa0613e9f7f1f7a67c4e82b1b55b7a1041e480079ae5f0"
+          topic: unauthenticated market-data surfaces
+        - path: "/api-reference/historical/get-historical-markets.md"
+          bytes: 17924
+          hash: "52ede1c9b657b321884b6a716149d6b7e9fb66d841ae61550bea2904f4c4e78b"
+          topic: archived market universe filters
+        - path: "/api-reference/historical/get-historical-market-candlesticks.md"
+          bytes: 9753
+          hash: "c85574d8c8c1363325ed878c48b1f4696fb391d0722294ddbc25a4c883b028d7"
+          topic: historical candle schema and intervals
+        - path: "/api-reference/historical/get-historical-trades.md"
+          bytes: 10860
+          hash: "1b6e1bb239ed6a8d560e38c15d716880679e1f4a2310d9b5f102805f3202eef8"
+          topic: historical trade schema and taker fields
+        - path: "/openapi.yaml"
+          bytes: 338211
+          hash: "4200222b16499f9c50bede4f708b07b45518c378668395193789a774f4bf0c4a"
+          topic: full manual endpoint specification
+    endpoints:
+      historical_cutoff:
+        path: "/historical/cutoff"
+        purpose: partition boundary between live and historical data
+        pagination: none
+        observed:
+          documented_field_types: int64_unix
+          actual_field_types: iso8601_string
+          fields: ["market_settled_ts", "trades_created_ts", "orders_updated_ts", "market_positions_last_updated_ts"]
+          observed_values_all_equal: "2026-07-15T00:00:00Z"
+          evolves_over_time: true
+          observation_count: 1
+        handling:
+          missing_field: hard_fail
+          null_field: hard_fail
+          rationale: >-
+            Defaulting a partition boundary to the epoch would route every market
+            query to the historical partition, so an absent or null boundary is
+            treated as unknown rather than as a value.
+      live_markets:
+        path: "/markets"
+        purpose: live-side market listing and contract metadata
+        pagination: {style: cursor, cursor_field: cursor, limit_param: limit, default_limit: 100, max_limit: 1000}
+        schema:
+          flavour: modern_fixed_point
+          prices: ["yes_bid_dollars", "yes_ask_dollars", "no_bid_dollars", "no_ask_dollars", "last_price_dollars", "previous_yes_bid_dollars", "previous_yes_ask_dollars", "previous_price_dollars", "settlement_value_dollars"]
+          counts: ["yes_bid_size_fp", "yes_ask_size_fp", "volume_fp", "volume_24h_fp", "open_interest_fp"]
+          price_decimals: 4
+          count_decimals: 2
+        status_enum: ["unopened", "open", "paused", "closed", "settled"]
+        observed:
+          status_all_rejected: true
+          status_all_status_code: 400
+          note: >-
+            "status=all" is documented nowhere and was observed to return HTTP 400.
+            It is refused locally so a caller bug cannot be hidden behind a network
+            error or retried as if transient.
+        restrictions:
+          - >-
+            Timestamp filters are mutually exclusive with each other and with some
+            status values. Markets settled before the cutoff are absent here and
+            must be read from /historical/markets.
+      historical_markets:
+        path: "/historical/markets"
+        purpose: archived inactive contract universe, the basis for pre-event eligibility
+        pagination: {style: cursor, cursor_field: cursor, limit_param: limit, default_limit: 100, max_limit: 1000}
+        schema:
+          flavour: modern_fixed_point
+          note: >-
+            The archived listing returns the modern _dollars/_fp schema, not legacy
+            plain names. The modern/legacy split follows the endpoint path, not the
+            live/historical vintage.
+        filters:
+          mutually_exclusive: ["tickers", "event_ticker", "series_ticker"]
+          event_ticker: single_value_only
+          mve_filter: ["exclude"]
+        restrictions:
+          - >-
+            Filters are documented as mutually exclusive. Supplying more than one is
+            refused locally rather than sent and misread as a server fault.
+      historical_candlesticks:
+        path: "/historical/markets/{ticker}/candlesticks"
+        purpose: historical candle series with quote and trade legs
+        pagination: none
+        required_params: ["start_ts", "end_ts", "period_interval"]
+        param_types:
+          start_ts: int64_unix_seconds
+          end_ts: int64_unix_seconds
+          period_interval: enum_minutes
+        intervals_minutes: [1, 60, 1440]
+        schema:
+          flavour: historical_legacy_plain
+          quote_fields: ["yes_bid.{open,high,low,close}", "yes_ask.{open,high,low,close}"]
+          trade_fields: ["price.{open,high,low,close,mean,previous}"]
+          count_fields: ["volume", "open_interest"]
+          absent_trade_encoding: explicit_null_all_six_price_keys
+        observed:
+          hole_sample:
+            window: [1783987200, 1784044800]
+            interval_minutes: 1
+            missing_end_period_ts: [1783987560, 1783987800]
+            note: >-
+              A real gap: six minutes of periods absent from the returned sequence.
+              This is why holes invalidate a reconstruction instead of being forward
+              filled.
+          contiguous_sample:
+            window: [1760490000, 1760560800]
+            interval_minutes: 60
+            spacing_seconds: 3600
+            note: coarse windows were contiguous in the same sample
+          quote_without_trade:
+            note: >-
+              A candle with no trade still carries yes_bid and yes_ask, so quote
+              presence and trade presence are independent observations.
+          empty_window: {"status_code": 200, "candlesticks": []}
+        restrictions:
+          - >-
+            Candle intervals are 1, 60 and 1440 minutes only. No finer resolution is
+            documented or available, and candle output is not order-book depth.
+      live_candlesticks:
+        path: "/series/{series_ticker}/markets/{ticker}/candlesticks"
+        purpose: candle series for markets still inside the live partition
+        pagination: none
+        required_params: ["start_ts", "end_ts", "period_interval"]
+        schema:
+          flavour: live_fixed_point
+          quote_fields: ["yes_bid.{open_dollars,high_dollars,low_dollars,close_dollars}"]
+          trade_fields: ["price.{open_dollars,high_dollars,low_dollars,close_dollars,mean_dollars,previous_dollars}"]
+          count_fields: ["volume_fp", "open_interest_fp"]
+          absent_trade_encoding: keys_absent_not_null
+        observed:
+          note: >-
+            Same top-level key names as the historical endpoint with different leaf
+            names, and absence is expressed by omitted keys rather than explicit
+            nulls. Normalization is keyed off the path for exactly this reason.
+          unknown_ticker: {"status_code": 200, "body": {"error": {"code": "not_found"}}}
+        restrictions:
+          - >-
+            The series ticker is part of the path and cannot be omitted, so a caller
+            must know the series of the market it is querying.
+      historical_trades:
+        path: "/historical/trades"
+        purpose: trades filled before the historical cutoff
+        pagination: {style: cursor, cursor_field: cursor, limit_param: limit, default_limit: 100, max_limit: 1000}
+        params: ["ticker", "min_ts", "max_ts", "limit", "cursor", "is_block_trade"]
+        schema:
+          flavour: modern_fixed_point
+          identity_field: trade_id
+          price_fields: ["yes_price_dollars", "no_price_dollars"]
+          count_field: count_fp
+          direction_fields:
+            canonical: ["taker_outcome_side", "taker_book_side"]
+            deprecated: ["taker_side"]
+          block_field: is_block_trade
+        observed:
+          distinct_repeats:
+            note: >-
+              Two trades sharing created_time and yes_price_dollars carried distinct
+              trade_id values. Content hashing must therefore never collapse
+              genuinely repeated records when the feed supplies its own identifier.
+          invalid_cursor_behaviour:
+            request_cursor: NOTACURSOR
+            status_code: 200
+            result: first_page_repeated
+            note: >-
+              A malformed cursor silently returns page one rather than an error,
+              which is a real pagination-loop hazard. Loop detection hashes cursors
+              and tracks repeated page bodies.
+          global_stream_exists: true
+          global_stream_usage: not_used
+          global_stream_rationale: >-
+            The documented global trade stream is not a practical way to cover a
+            narrow cohort, and an unbounded pull would make audit cost unknowable. A
+            ticker filter is used instead.
+      live_trades:
+        path: "/markets/trades"
+        purpose: live-side trades inside the cutoff window
+        pagination: {style: cursor, cursor_field: cursor, limit_param: limit, max_limit: 1000}
+      orderbook:
+        path: "/markets/{ticker}/orderbook"
+        purpose: public point-in-time book snapshot
+        pagination: none
+        schema:
+          flavour: orderbook_fp
+          sides: ["yes_dollars", "no_dollars"]
+        semantics:
+          returns_bids_only: true
+          ask_derivation: "yes_ask = 1 - no_bid, per the documented reciprocal relationship"
+          sequence_number_published: false
+        restrictions:
+          - >-
+            The response carries no sequence number, so a snapshot cannot close a
+            sequence gap and cannot mark a reconstruction valid on its own.
+          - >-
+            The public WebSocket order-book channel requires authentication, so no
+            incremental public delta stream exists for Kalshi here. Only a series of
+            snapshots is obtainable.
+      series_list:
+        path: "/series"
+        purpose: enumerate series identifiers instead of guessing tickers
+        pagination: {style: cursor, cursor_field: cursor, limit_param: limit}
+      series_detail:
+        path: "/series/{ticker}"
+        purpose: series metadata, rule document URLs, settlement source
+        pagination: none
+        observed:
+          known_good_series: ["KXCPI", "KXCPIYOY", "KXPAYROLLS", "KXFED"]
+          settlement_source_example:
+            name: "Bureau of Labor Statistics"
+            url: "https://www.bls.gov/cpi/"
+      event_detail:
+        path: "/events/{event_ticker}"
+        purpose: one event with its nested market set
+        pagination: none
+        params: ["with_nested_markets"]
+        observed:
+          mixed_strike_lifecycles:
+            note: >-
+              Strikes within one event carried different open_time and created_time
+              values, so a point-in-time universe must be built from each market's
+              own open_time rather than from the event identity.
+    rate_limits:
+      mechanism: token_bucket_per_tier
+      default_request_cost_tokens: 10
+      read_budgets_tokens_per_second:
+        basic: 200
+        advanced: 300
+        expert: 600
+        premier: 1000
+        paragon: 2000
+        prime: 4000
+        prestige: 10000
+      burst_capacity: two_seconds_of_budget_for_lower_tiers
+      rate_limited_status: 429
+      rate_limited_body: '{"error": "too many requests"}'
+      retry_after_header_present: false
+      x_ratelimit_headers_present: false
+      documented_client_response: exponential_backoff
+      authoritative_cost_list: "/account/endpoint_costs"
+      authoritative_cost_list_requires_auth: true
+      implementation_note: >-
+        No numerical quota is embedded as a constant. Pacing is configured through
+        RetryPolicy.min_interval_seconds, defaulting to zero for sequential single
+        clients, and 429 is retried on the exponential backoff curve the
+        documentation prescribes. A Retry-After, when a server does send one, is
+        honoured, and a wait longer than the configured budget stops the call and
+        records it as blocked rather than retrying early.
+
+venues_bls:
+  bls:
+    base_url: "https://www.bls.gov"
+    access:
+      status: reachable_with_caveat
+      authentication: none_required
+      observed_at: "2026-09-13"
+      caveat: >-
+        Calendar pages and archived release payloads were read successfully through
+        a browser user agent, while a plain command-line client received HTTP 403
+        with an access-denied body. The gap is a client restriction, not a missing
+        release, and the client must not attempt to circumvent it.
+      observed_blocked_status_code: 403
+      observed_blocked_body_bytes: 1325
+      observed_blocked_body_hashes:
+        - url: "https://www.bls.gov/schedule/2026/09_sched_list.htm"
+          hash: "a8a36e914bb8a6fb1f9301d743d04c8d8cb5020c2fdb9ec1b39f73da0aa17c9d"
+        - url: "https://www.bls.gov/news.release/archives/cpi_08122026.htm"
+          hash: "3461dd32d7337b831339f7c4211817b1ccb391ebd2e9d8b8962a867648aa8b66"
+      timezone_handling: >-
+        All calendar times are resolved through the zoneinfo America/New_York entry.
+        No fixed UTC offset is used anywhere, so the March and November daylight
+        saving transitions are handled by the tz database.
+    endpoints:
+      release_calendar:
+        path: "/schedule/{year}/{month:02d}_sched_list.htm"
+        purpose: official release schedule in Eastern Time
+        pagination: none
+        observed:
+          declares_eastern_time: true
+          declaration_text: "All times on calendar are Eastern Time"
+          row_shape: "date | time | release title with reference period"
+          sample_2026_09:
+            - {date: "2026-09-04", time: "08:30", release: "Employment Situation", period: "August 2026"}
+            - {date: "2026-09-11", time: "08:30", release: "Consumer Price Index", period: "August 2026"}
+        handling:
+          missing_timezone_declaration: hard_fail
+          rationale: >-
+            An unzoned "08:30 AM" is not a usable instant, so a page that does not
+            state its zone is rejected rather than interpreted against an assumed
+            offset.
+      ics_feed:
+        path: "/schedule/news_release/bls.ics"
+        absolute_url: "https://www.bls.gov/schedule/news_release/bls.ics"
+        purpose: machine-readable schedule for cross-checking calendar times
+        observed:
+          content_type: text/calendar
+          declares_timezone: "X-WR-TIMEZONE:US-Eastern"
+          inline_daylight_rules: true
+          note: >-
+            The feed embeds its own daylight rules; they agree with America/New_York.
+      archive_index_cpi:
+        absolute_url: "https://www.bls.gov/bls/news-release/cpi.htm"
+        purpose: archived CPI releases by publication date
+      archive_index_empsit:
+        absolute_url: "https://www.bls.gov/bls/news-release/empsit.htm"
+        purpose: archived Employment Situation releases by publication date
+      archived_release:
+        path: "/news.release/archives/{slug}_{MMDDYYYY}.htm"
+        slugs: {cpi: "cpi", empsit: "empsit"}
+        purpose: initial-release payload for a publication date
+        observed:
+          embargo_line_present: true
+          embargo_line_example: "Transmission of material in this release is embargoed until 8:30 a.m. (ET) Wednesday, August 12, 2026 USDL-26-1378"
+          reference_period_in_document: true
+          observed_cpi_fields:
+            - cpi_headline_sa_mom_pct
+            - cpi_core_sa_mom_pct
+            - cpi_headline_nsa_yoy_pct
+            - cpi_core_nsa_yoy_pct
+            - cpi_u_nsa_index_level
+          observed_empsit_fields:
+            - payrolls_change_thousands
+            - unemployment_rate_pct
+            - avg_hourly_earnings_usd
+            - avg_hourly_earnings_mom_pct
+            - avg_hourly_earnings_yoy_pct
+            - avg_workweek_hours
+            - avg_workweek_change_hours
+            - revisions_disclosed_for_prior_months
+      unpublished_releases:
+        purpose: documented non-publications recorded as explicit gaps
+        observed:
+          - {family: "cpi", reference_period: "October 2025", reason: "not published because of 2025 lapse in federal government appropriations"}
+          - {family: "empsit", reference_period: "October 2025", reason: "not published because of 2025 lapse in federal government appropriations"}
+          - {family: "cpi", reference_period: "September 2025", note: "published late, on 2025-10-24"}
+          - {family: "empsit", reference_period: "September 2025", note: "published late, on 2025-11-20"}
+        handling:
+          absent_release: explicit_gap_with_reason
+          never: empty_success
+    expectations:
+      status: unavailable
+      licensed_point_in_time_consensus: not_available_to_this_project
+      vendor_consensus_assumed_free: false
+      forecast_archive_prespecified: false
+      market_implied_route_available: false
+      market_implied_route_caveat: >-
+        A market-implied distribution is endogenous to the market under study and
+        cannot serve as its own independent validation target, even when captured.
+      implementation_note: >-
+        No consensus value is fetched, estimated or defaulted anywhere. A missing
+        expectation is recorded as unavailable and the surprise slope is reported as
+        not estimable rather than filled with a plausible number.
+    alfred:
+      documentation: "https://fred.stlouisfed.org/docs/api/fred/realtime_period.html"
+      access: {status: requires_api_key, key_used: false, exercised: false}
+      vintage_granularity: date_level
+      limitation: >-
+        Real-time periods are date-level, so ALFRED cannot establish intraday
+        availability. It is recorded as a documented option and is not used.
+
+venues_polymarket:
+  polymarket:
+    access:
+      status: unreachable
+      authentication: none_required
+      observed_at: "2026-09-13"
+      observed_failure: connection_timeout
+      attempts_per_host: 2
+      hosts_attempted:
+        - "https://gamma-api.polymarket.com"
+        - "https://clob.polymarket.com"
+        - "https://data-api.polymarket.com"
+        - "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+        - "https://docs.polymarket.com"
+        - "https://polymarket.com"
+      verified_endpoints: none
+      documentation_verified: false
+      handling: fail_closed
+      implementation_note: >-
+        No Polymarket endpoint was verified in this environment, so the host list,
+        paths and field names below come from the plan's cited documentation and are
+        flagged as unverified. The client probes with bounded attempts and raises
+        PolymarketUnreachable rather than returning empty data, and nothing bypasses
+        a restriction. Re-test reachability before relying on any entry here.
+    endpoints_unverified:
+      gamma_markets: {url: "https://gamma-api.polymarket.com/markets", params: ["limit", "offset", "active", "closed"]}
+      clob_book: {url: "https://clob.polymarket.com/book", params: ["token_id"]}
+      clob_midpoint: {url: "https://clob.polymarket.com/midpoint", params: ["token_id"]}
+      prices_history:
+        url: "https://clob.polymarket.com/prices-history"
+        params: ["market", "startTs", "endTs", "fidelity"]
+        fidelity_unit: minutes
+        legacy_surface: true
+      data_trades: {url: "https://data-api.polymarket.com/trades", params: ["asset_id", "limit", "offset"]}
+      market_websocket:
+        url: "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+        subscription_message: '{"assets_ids": ["<token_id>"], "type": "market"}'
+        authentication: public_subscription
+        documented_message_kinds: ["book", "price_change", "tick_size_change", "last_trade_price", "best_bid_ask"]
+    history_semantics:
+      documented_resolution: age_dependent
+      tick_reconstruction_claim: false
+      note: >-
+        The legacy surface expresses fidelity in minutes, and the newer documented
+        surface resolves age-dependently. Neither reconstructs a historical tick
+        feed, so the implementation measures returned spacing and reports it rather
+        than assuming the requested fidelity was honoured.
+    capture_semantics:
+      snapshot_then_delta: true
+      requires_snapshot_before_valid: true
+      reconnect_invalidates_state: true
+      size_semantics_documented: false
+      size_semantics_implemented: absolute_level_replacement
+      size_semantics_recorded_per_update: true
+      polling_fallback_labelled: snapshots
+      polling_tick_complete: false
+      websocket_tick_complete: false
+
+audit:
+  gate: G0
+  cohort_size: 10
+  cohort_source: default_ten_event_cohort_in_ingest_audit
+  cohort_selection_rules:
+    - candidates come from the series' own historical market listing
+    - eligibility is decided by the contract's own open_time and close_time
+    - post_event_volume_filtering: false
+    - liquidity_is_reported_not_filtered: true
+  window_minutes_before: 120
+  window_minutes_after: 120
+  requested_candle_intervals_minutes: [60, 1]
+  primary_series:
+    cpi: ["KXCPI", "KXCPIYOY"]
+    empsit: ["KXPAYROLLS"]
+  downstream_series_discovery:
+    mode: keyword_search_over_exchange_series_listing
+    cpi_terms: ["inflation", "cpi"]
+    empsit_terms: ["payroll", "jobs", "unemployment", "employment"]
+    guessed_tickers: false
+  bounds:
+    events: 10
+    max_contracts_per_event: 40
+    max_candle_contracts_per_event: 4
+    max_pages_per_listing: 8
+    trade_page_limit: 1000
+  outputs:
+    - coverage.json
+    - raw_hashes.json
+    - event_card.json
+    - series_discovery.json
+  honest_failure_modes:
+    - >-
+      If narrow historical discovery cannot be completed within the
+      endpoint-supported filters, G0 fails honestly. The audit reports blocked
+      events and a status of blocked or partial rather than reporting an empty
+      successful study.
+    - >-
+      A post-release window with no quotes is classified against the contract's own
+      close_time; a closed market is recorded as a closed_market exclusion, not as
+      an observation of no movement.
+    - >-
+      Candle holes invalidate reconstruction for the affected window and are
+      reported per contract, and are never forward filled.

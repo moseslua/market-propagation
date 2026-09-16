@@ -1,0 +1,526 @@
+config_version: study_b_crossvenue_v1
+study_id: study_b_crossvenue
+title: Cross-venue propagation between prediction venues
+
+# A design, not a result. This file is written beside the v2 freeze and reads
+# `configs/cohort.yaml`, `configs/cohort_v2.yaml`, `configs/event_windows_v2.yaml`
+# and `configs/study_v2.yaml`. It declares nothing that contradicts them.
+#
+# The question: does discovery on one prediction venue predict repricing on the
+# other? The unit is a matched event x venue pair. Two things make that unit hard on
+# this archive, and both were measured rather than assumed:
+#
+# 1. An order of the pair is only meaningful when both sides carry the same payout
+#    semantics. Kalshi's per-meeting decision contract and Polymarket's cumulative
+#    "cut by <date>" contract are different claims, not two quotes of one claim.
+#    `reports/contract_rule_registry.json` lists
+#    `genuinely_identical_cross_venue_claim` as a logical relation and records
+#    `verified_match_count: 0` for it, blocked by
+#    `polymarket_access_timed_out`.
+# 2. That access blocker is now stale. The Polymarket archive is acquired and
+#    carries intraday trade rows in every declared release window. The binding
+#    constraint is semantic, not access: measured below, no per-meeting
+#    policy-decision market on Polymarket is live at any of the ten declared
+#    release instants.
+#
+# The earlier v1 record that cross-venue work was blocked by a timed-out venue is
+# therefore corrected here rather than inherited. The union of the two facts is
+# worse for the design than the access story was: access is fine and the matched
+# instrument does not exist in the window.
+
+scope: >-
+  Source-time measurement of whether one venue's price change around a release
+  predicts the other venue's subsequent price change for the same economic claim.
+  Cross-venue pooling, cross-venue payoff-equivalence claims and any use of one
+  venue's price as the other's probability are all outside this file.
+
+status:
+  runnable_today: blocked
+  evidence_tier_permitted_today: descriptive_only_for_unmatched_markets
+  confirmatory_estimation_permitted: false
+  blocker: no_matched_venue_pair_live_at_a_declared_release_instant
+  blocker_detail: >-
+    under the declared decision calendar and a per-meeting payout semantics, zero
+    matched event x venue pairs exist across the ten declared releases. The measured
+    funnel is 0 of 10. This is a property of the instruments listed in the window, not
+    of transport: the Polymarket archive is acquired, its intraday rows are present in
+    all ten release windows, and 2,162 to 7,305 rows per window are unresolved at the
+    release instant.
+  measured_now:
+    polymarket_archive: acquired
+    daily_aligned_shards: 1248
+    daily_aligned_span: 2022-11-21 to 2026-04-28
+    kalshi_trade_rows: 154505005
+    kalshi_span: 2021-06-30 to 2026-01-29
+    release_windows_with_intraday_polymarket_trades: 10 of 10
+    intraday_rows_unresolved_at_the_release_instant_per_window: 2162 to 7305
+    declared_calendar_dates_with_a_per_meeting_polymarket_decision_market: 0 of 10
+    kalshi_pairs_with_verified_cross_venue_match: 0
+    registry_cross_venue_verified_matches: 0
+    registry_cross_venue_blocked_by: polymarket_access_timed_out
+  measured_where:
+    - reports/data_card.md
+    - reports/contract_rule_registry.json
+    - .audit/external-measurements.md
+  correction_to_the_inherited_record: >-
+    `configs/cohort.yaml` records
+    `cross_venue_match_status: unverified_polymarket_access_timed_out`. The timed-out
+    access is no longer the operative fact: the archive is local and readable, and the
+    design is blocked one step later, at semantic matching. Both are recorded so the
+    next reader does not re-open a settled transport question.
+
+unit_of_analysis: matched_event_x_venue_pair
+unit_key_fields:
+  - event_id
+  - pair_id
+  - symbol_or_contract_id_side_a
+  - symbol_or_contract_id_side_b
+  - cluster_id
+pseudo_replication_warning: >-
+  one claim carried on two venues is one observation of a propagation event, not two.
+  Counting each venue's rows separately and calling them independent trials inflates
+  precision and is prohibited.
+
+clock:
+  authority: configs/study_v2.yaml
+  windows_authority: configs/event_windows_v2.yaml
+  mode: source
+  basis: venue_recorded_transaction_time
+  reference_point: scheduled_release_time
+  per_venue_time_axis:
+    kalshi: venue_recorded_transaction_time
+    polymarket: block_timestamp_epoch_seconds
+  time_axis_unification_reason: >-
+    the two venues record different time axes. They are unified by converting each to
+    an aware UTC instant and taking the recorded instant as the observation time in
+    both cases. Unification is a declared transform, not an assumption that the two
+    axes carry the same meaning: blockchain inclusion time and exchange-recorded trade
+    time have different failure modes, and the difference is carried as a named
+    limitation rather than smoothed away.
+  retrospective_alignment_is_a_limitation: true
+  fixed_utc_offset_allowed: false
+  polymarket_shard_partition_note: >-
+    `daily_aligned` shards partition by UTC+8 day, so the shard holding a release
+    window is (release_time + 8h) date, not the UTC date. A window that does not
+    account for this reads a neighbouring day and reports an empty window as an absent
+    one. This was measured, not assumed: every declared 08:30 ET window falls inside
+    the UTC+8 shard of its own release day.
+
+horizons:
+  # Cross-venue horizons are offset by an explicit discovery lag, because the claim
+  # under test is that one venue moves first. A common horizon on both sides would
+  # test simultaneity, which is a different and weaker claim.
+  discovery_lag_seconds: 60
+  discovery_lag_reason: >-
+    the same 60 s guard `configs/study_v2.yaml` declares as `lag_guard_seconds`. It is
+    reused rather than re-chosen so the two designs cannot disagree about what counts
+    as "before". It is a declared separation, not a measured venue lead, and no result
+    here is allowed to reinterpret it as one.
+  target_horizons_seconds:
+    - 60
+    - 300
+    - 900
+    - 1800
+    - 3600
+  primary_horizon_seconds: 300
+  horizon_semantics: >-
+    the predictor's change over [release_time, release_time + discovery_lag] and the
+    outcome's change over [release_time + discovery_lag, release_time + discovery_lag
+    + h]. The windows do not overlap, so one venue's prints never inform both sides.
+  restriction_reasons:
+    - id: grain_limited_by_the_coarser_venue_axis
+      reason: >-
+        the horizon set is limited to what both venues actually resolve. A horizon one
+        venue cannot resolve is not declared: it would measure the coarser venue's
+        spacing rather than a response.
+    - id: prospective_sub_second_horizons_excluded_until_clock_audit_passes
+      reason: no sub-second clock audit exists on either path
+    - id: daily_and_settlement_responses_are_separate_outcomes
+      reason: they carry a different contamination profile and are not folded in
+
+outcome:
+  primary:
+    id: follower_repricing
+    symbol: R_follower(p, e, h)
+    definition: >-
+      p_second(last trade at or before release_time + L + h) minus p_second(last trade
+      at or before release_time + L), where `second` is the venue whose price is being
+      predicted and L is the discovery lag
+    units: absolute_probability_units_0_1
+    smallest_scientifically_relevant_effect: 0.005
+    smallest_relevant_effect_reason: >-
+      the 0.005 probability-unit MAE gain the v1 and v2 freezes declare for a
+      predictive comparison. Reused so a cross-venue claim is held to the same bar as
+      the within-venue propagation claim, and not lowered because the instrument is
+      harder to find.
+  secondary:
+    - id: leader_first_change
+      definition: the predictor's own change over the discovery-lag window
+      relation_to_primary: the regressor of the primary contrast
+    - id: reversed_order
+      definition: the same contrast with the two venues exchanged
+      relation_to_primary: prespecified_diagnostic_not_a_null
+      why_not_a_null: >-
+        feedback and a shared news shock can produce prediction in either direction.
+        A reverse edge is therefore evidence about mechanism, not a falsification.
+  not_an_outcome_here:
+    - id: cointegration_or_long_run_parity
+      why: a level relationship over months is a different estimand from a
+        release-window response, and it is not declared in this file
+    - id: executable_cross_venue_arbitrage
+      why: >-
+        this study uses observed prints, not books. No depth, no fee layer and no
+        simultaneous execution are established, so a price gap here is never called
+        an arbitrage
+
+treatment:
+  symbol: X
+  kind: lagged_cross_venue_change
+  definition: >-
+    the leader venue's recorded price change from the release instant to
+    release_time + L, for the matched claim
+  exogeneity_statement: >-
+    the treatment is lagged and observed before the outcome window opens. That makes it
+    admissible as a predictor. It does not make it exogenous: a common news shock moves
+    both venues, and this design cannot separate "the follower learned from the leader"
+    from "both learned from the release". The news-conditioned rung and the
+    mechanism-consistent tier below are what would address that, and both are blocked.
+  known_contamination:
+    - id: shared_news_shock
+      why: both venues observe the same release, so a common component is present by
+        construction
+    - id: stale_leader_print
+      why: a leader that did not trade inside the discovery-lag window yields no
+        treatment on that pair, and is recorded as such rather than carried forward
+
+sample:
+  id: matched_cross_venue_claims
+  required_match_fields:
+    # These are the fields `reports/contract_rule_registry.json` declares for a
+    # logical payoff identity, reproduced here so this study cannot match on a
+    # weaker test than the registry's.
+    - venue
+    - event_definition
+    - threshold
+    - inequality_or_strictness
+    - outcome_axis
+    - orientation
+    - rounding
+    - settlement_source
+    - settlement_time
+    - tie_break_and_void_policy
+    - payout_scale
+  match_authority: reports/contract_rule_registry.json
+  match_function_contract: market_propagation.coherence.exact_match
+  matched_on_ticker_resemblance: false
+  matched_on_ticker_resemblance_reason: >-
+    ticker resemblance is not settlement semantics. Two contracts about the target
+    range and the realized rate are different claims even when their numbers coincide,
+    and this is declared in `configs/neighbor_graph_v2.yaml` for the within-venue graph
+    as well.
+  eligibility_rules:
+    - id: both_sides_listed_and_unresolved
+      rule: each side is listed at the release instant and still listed at the end of
+        the outcome window
+      why: a contract that resolved before the release has no post-release price to
+        predict, and one that resolves mid-window yields a censored outcome
+    - id: both_sides_carry_a_readable_payout
+      rule: each side's payout is read from the venue's own published contract text
+      why: a defaulted predicate would silently invent a threshold
+    - id: identical_payout_semantics
+      rule: every declared match field agrees exactly
+      why: a near match is never substituted for an exact one
+    - id: no_post_event_activity_selects_the_pair
+      rule: the pair set is fixed from pre-event information alone
+      why: >-
+        selecting pairs by which side traded after the release would condition the
+        sample on the outcome
+  measured:
+    declared_releases: 10
+    release_windows_with_intraday_polymarket_rows: 10
+    intraday_polymarket_rows_in_window_total: 55777
+    intraday_polymarket_usdc_in_window_total: 5123143.3
+    markets_with_trades_in_a_window_per_release: 298 to 442
+    markets_unresolved_at_the_release_instant_per_release: 298 to 383
+    per_meeting_policy_decision_markets_live_at_a_release: 0
+    matched_event_x_venue_pairs: 0 of 10
+  why_the_count_is_zero: >-
+    the release-window activity is real and large, and it is almost entirely in
+    markets whose payoff is not the release. The policy-semantics markets that do exist
+    in the overlap window are cumulative ("fed-rate-cut-by-<date>", "fed-rate-cut-in-
+    2025") rather than per-meeting, and none of them is live at a declared release
+    instant: across the whole 2024-12 to 2025-06 window the only policy-semantics
+    closes landing on a declared calendar date are a cumulative cut market on
+    2025-06-18 and a cumulative hike market on 2025-12-10. Neither is a per-meeting
+    decision contract, and neither release is inside the ten-release cohort.
+
+exclusions:
+  missing_is_null: true
+  observed_zero_is_evidence: true
+  fill_forward_forbidden: true
+  mask_reasons:
+    - code: no_matched_counterpart
+      why: >-
+        no contract on the other venue states the identical payout for the same
+        economic claim. This is the reason that masks the entire declared cohort.
+    - code: counterpart_resolved_before_the_release
+      why: no post-release price exists on that side
+    - code: counterpart_not_yet_listed
+      why: the other side had not listed at the release instant, so there is no
+        pre-release level to difference against
+    - code: leader_did_not_trade_in_the_discovery_window
+      why: >-
+        the treatment is unobserved for that pair. It is not set to zero, because a
+        venue that did not print did not necessarily stand still
+    - code: minimum_different_outcome_axis
+      why: the two sides' outcome axes disagree, so their prices are not prices of the
+        same event and their difference is not a spread
+    - code: half_or_partial_payout
+      why: >-
+        a half or partial payout is never relabelled as a binary resolution, and a
+        contract with an exceptional payout is excluded rather than coerced
+    - code: payout_scale_mismatch
+      why: two scales cannot be differenced without inventing a conversion
+  contamination_stop:
+    - market_close_summarises_a_regional_venue_day
+    - scheduled_maintenance
+    - data_feed_outage
+    - polymarket_gas_spike_or_chain_congestion
+  contamination_stop_reason: >-
+    the fourth is venue-specific: on the on-chain venue, inclusion delay is a property
+    of the chain rather than of the market, and a window overlapping a congestion
+    episode is stopped rather than shortened.
+
+primary_specification:
+  id: crossvenue_follower_repricing_at_300s
+  immutable_after_results: true
+  status: blocked
+  status_reason: 0 matched event x venue pairs exist; the design has no row
+  family: both
+  family_handling: >-
+    cpi and employment are estimated separately and are never pooled into one shock.
+    Unlike study A, neither is promoted to sole primary here, because the binding
+    constraint is the instrument rather than the family and no family reaches a
+    runnable count.
+  horizon_seconds: 300
+  discovery_lag_seconds: 60
+  estimand: the association between the leader's discovery-lag change and the
+    follower's subsequent 300 s change, estimated on matched pairs
+  estimator_shape: >-
+    a nested held-out comparison, with the follower's own pre-window state and the
+    release family as the baseline, and the leader's lagged change added as the
+    candidate term. A cross-venue term earns its place only by a held-out gain beyond
+    that baseline, exactly as the within-venue network rung earns its place beyond the
+    own and news rungs.
+  null_hypothesis: adding the leader's lagged change does not reduce held-out error
+  decision_rule: >-
+    report the point estimate and a one-sided 95 % release-clustered lower bound on the
+    MAE gain. Promotion requires the bound above zero; a claim that the gain exceeds
+    the declared smallest relevant effect additionally requires the bound above 0.005
+    probability units.
+  no_post_result_threshold_reduction: true
+
+exploratory_namespace:
+  label: exploratory
+  members:
+    - id: unmatched_market_comovement
+      what: >-
+        the co-movement of unresolved markets around a release across the two venues,
+        with no payoff matching at all
+      status: runnable
+      claim_ceiling: >-
+        a descriptive statement that unrelated markets on two venues move in the same
+        release window. It is not propagation, not a matched pair, and cannot be
+        promoted to the primary result
+    - id: polymarket_only_release_response
+      what: the release-window response of Polymarket's own unresolved markets
+      status: runnable
+      claim_ceiling: a single-venue response measurement, which is study A's estimand on
+        a second venue rather than this study's cross-venue claim
+    - id: cumulative_vs_per_meeting_semantics_probe
+      what: >-
+        a diagnostic sizing how many releases would gain a matched pair if cumulative
+        "cut by <date>" contracts were admitted as per-meeting ones
+      status: runnable
+      claim_ceiling: >-
+        a sizing diagnostic only. Admitting a cumulative contract as a per-meeting one
+        is exactly the near-match substitution this study forbids, so the diagnostic may
+        never supply a primary row
+    - id: reversed_order_diagnostic
+      what: the same contrast with the venues exchanged
+      status: not_run
+      not_run_reason: no matched pair exists in either direction
+    - id: quantity_weighted_flow
+      what: flow weighted by traded size rather than counted
+      status: disabled_pending_a_defensible_reconstruction
+      disabled_reason: >-
+        the cleaned Polymarket layers omit token quantity, so quantity-weighted flow
+        stays disabled until a defensible reconstruction exists. Raw `OrderFilled`
+        carries `token_amount` and `usdc_amount`, and the raw layer is
+        reconciliation-only: it is never added to a cleaned layer as extra
+        observations.
+
+multiple_testing:
+  primary_family_size: 1
+  primary_correction: none_required_for_a_single_declared_contrast
+  declared_curve_family:
+    member_count: 5
+    correction: bonferroni_simultaneous_bands
+    level_rule: one minus (alpha divided by the number of declared horizons)
+  secondary_family:
+    member_count: 1
+    correction: bonferroni_over_declared_families
+    level: 0.975
+  exploratory_correction: benjamini_hochberg
+  exploratory_q: 0.05
+  pseudo_replication_prohibited: true
+
+clustering:
+  level: release
+  cluster_id_field: cluster_id
+  cluster_count_expected: 10
+  authority: configs/study_v2.yaml
+  additional_dependence_named:
+    - id: pair_level
+      why: >-
+        several matched pairs can share one release, so pairs within a release are
+        dependent observations of one release. Handled by the release-level cluster,
+        not by a second level.
+    - id: cross_venue_equivalent_pairs_share_a_split
+      why: >-
+        `configs/study_v1.yaml` requires cross-venue equivalents to share a split, and
+        that rule is inherited unchanged: a pair is never split across the
+        chronological folds, because one side's information would then leak into the
+        other's evaluation fold.
+  few_cluster_handling: report broad intervals; no interval below 3 clusters with a
+    design row
+  contract_identity_across_venues: >-
+    one venue's contract is never treated as the same independent unit as its matched
+    counterpart. The pair is the unit.
+
+bootstrap:
+  unit: whole_release
+  resampling: with_replacement_over_release_clusters
+  draws_per_interval: 200
+  seed: 20260913
+  resampling_seed: 20260914
+  seed_authority: configs/study_v2.yaml
+  keep_intact_within_a_drawn_release: every matched pair and every declared horizon of
+    that release
+  prohibited_units:
+    - iid_resampling_of_individual_quote_snapshots
+    - row_level_bootstrap_within_a_release
+    - contract_as_an_independent_unit
+    - venue_side_as_an_independent_unit
+  why: >-
+    resampling venue sides rather than pairs would break the pairing that defines the
+    estimand and would treat one claim as two independent observations.
+
+dependencies:
+  - id: polymarket_transaction_archive
+    provides: the second venue's price path
+    status: present
+    measured: 1248 daily_aligned shards spanning 2022-11-21 to 2026-04-28, with
+      intraday rows in all ten declared release windows and 51,231 USDC to 899,275
+      USDC traded per window
+    evidence: reports/data_card.md, .audit/external-measurements.md
+    note: >-
+      this dependency is no longer the blocker. It was recorded as
+      `unverified_polymarket_access_timed_out` in `configs/cohort.yaml`, and that
+      record is now stale in the direction of the archive being available.
+  - id: verified_cross_venue_rule_match
+    provides: a matched event x venue pair
+    status: absent
+    measured: >-
+      0 matches; `cross_venue_identical_claims` records
+      `verified_match_count: 0` and the declared block is
+      `polymarket_access_timed_out`
+    evidence: reports/contract_rule_registry.json
+    why_it_is_absent_now: >-
+      the recorded block reason is stale; the measured reason is that no per-meeting
+      policy-decision market on the second venue is live at any declared release
+      instant. The set of verified matches is empty, and an empty set means no match
+      was verified rather than that no match exists.
+  - id: kalshi_rule_vintage_record
+    provides: admissibility of the Kalshi side
+    status: absent
+    measured: 0 of 785 pairs rule-verified; 0 of 3,925 rows valid
+    evidence: reports/contract_rule_registry.json, reports/source_feasibility.md
+    why_it_matters_here: >-
+      even a matched pair would carry the same per-contract vintage requirement as
+      study A. Closing the match gap alone does not make this study runnable.
+  - id: point_in_time_expectation_source
+    provides: separation of a common news shock from venue-to-venue transmission
+    status: absent
+    measured: pre-release captures exist for 9 of 10 releases and none is bound as a
+      validated expectation record
+    evidence: reports/source_feasibility.md
+    why_it_matters_here: >-
+      without it, a cross-venue association cannot be separated from both venues
+      reacting to the same release. This is the dependency that keeps the study at the
+      predictive tier even once a pair exists.
+  - id: cross_venue_clock_quality
+    provides: a defensible statement about which venue moved first
+    status: partial
+    why: >-
+      Kalshi's axis is venue-recorded transaction time; Polymarket's is blockchain
+      inclusion time. Both are measured locally in the archive, and neither carries a
+      synchronization certificate, so a sub-second ordering claim between the two
+      venues is not supported by these inputs.
+
+claim_limits:
+  may_claim:
+    - the two archives are acquired and their release-window activity is measured
+    - a descriptive statement about co-movement of unresolved markets across venues in
+      a release window, labelled exploratory
+    - a measured zero for matched pairs, with the instrument-level reason named
+  may_not_claim:
+    - id: cross_venue_propagation
+      why: zero matched pairs exist, so no cross-venue contrast has a row
+    - id: venue_lead_lag_ordering
+      why: >-
+        the two venues record time on different axes with no synchronization evidence.
+        A first-mover claim between them is not supported by these inputs.
+    - id: payoff_equivalence
+      why: >-
+        no exact match has passed the declared checklist, and pooling across venues
+        without a verified match is prohibited
+    - id: causal_transmission
+      why: >-
+        no intervention and no defended natural experiment. A lagged association is a
+        predictive statement, and a shared news shock is a live alternative that this
+        design cannot exclude
+    - id: executable_cross_venue_arbitrage
+      why: prints are not a book. No depth, no fee layer, no simultaneous execution, and
+        an infeasible quoted box is a coherence finding rather than an arbitrage
+    - id: anything_about_what_a_live_participant_knew
+      why: source alignment is retrospective
+    - id: that the second venue's macro cohort is thin
+      why: >-
+        this is recorded as a measured count rather than as a qualitative claim. The
+        5,577 rows and 3.0 M USDC per release window are not thin in aggregate; what is
+        absent is a matched instrument, which is a different statement.
+    - id: generalisation_from_aggregate_activity
+      why: >-
+        aggregate cross-venue activity says nothing about propagation, and this study
+        never reads it as though it did
+
+provenance:
+  read_before_writing:
+    - reports/study_execution_status.md
+    - reports/source_feasibility.md
+    - reports/empirical_study/paper.md
+    - reports/data_card.md
+    - reports/contract_rule_registry.json
+    - .audit/external-measurements.md
+    - .audit/astra-repair/evidence_three_gates.md
+    - configs/study_v2.yaml
+    - configs/event_windows_v2.yaml
+    - configs/cohort.yaml
+    - configs/cohort_v2.yaml
+    - configs/external_history_v1.yaml
+    - configs/neighbor_graph_v2.yaml
+    - src/market_propagation/coherence.py
+  compatible_with_frozen_declarations: true
+  supersedes: none
+  changes_after_results_are_exploratory: true

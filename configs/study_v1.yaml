@@ -1,0 +1,562 @@
+# Frozen study specification for the market-propagation study.
+# Locally frozen implementation specification; not externally registered, and no human
+# owner approval or registry registration is claimed or implied.
+# Empirical status is unestimated as of the specification freeze on 2026-09-13.
+# Effect thresholds are absolute probability units; 0.01 equals 1 percentage point.
+# Every timestamp is a quoted ISO 8601 string. Every duration is seconds.
+# Candidate market discovery is owned by PublicIngestion, not by this file.
+
+study:
+  study_id: market_propagation
+  spec_version: "v1"
+  spec_status: frozen_local_unregistered
+  frozen_on: "2026-09-13"
+  frozen_by: StudySpecification
+  frozen_by_role: implementation_specification_workstream
+  frozen_basis: implementation_time_local_specification_freeze
+  human_owner_approval_claimed: false
+  external_registration: none_claimed
+  empirical_status: unestimated
+  empirical_status_anchor: specification_freeze_2026-09-13
+  empirical_status_scope: >-
+    At the freeze time no market panel had been built, no model had been fit on market
+    data, no coverage audit had completed, and no power calculation had been run. Later
+    synthetic software experiments do not revise that freeze-time statement.
+  synthetic_software_experiments_count_as_empirical_results: false
+  scope: read_only_public_data_and_offline_simulation
+  preregistration_path: reports/preregistration.md
+  cohort_path: configs/cohort.yaml
+  event_windows_path: configs/event_windows.yaml
+
+time:
+  storage_timezone: UTC
+  source_calendar_timezone: America/New_York
+  tz_database: IANA
+  fixed_utc_offset_allowed: false
+  usable_time_definition: availability_upper_bound
+  source_time_is_usable_time: false
+
+units_convention:
+  probability_scale: "0 to 1"
+  probability_points_means: absolute_probability_units_on_the_0_to_1_scale
+  absolute_probability_units_per_percentage_point: 0.01
+  percentage_points_per_absolute_probability_unit: 100.0
+  not_a_0_to_100_scale: true
+  applies_to:
+    - outcome_response_values
+    - forecast_target_values
+    - forecast_loss_metrics
+    - effect_threshold_values
+  consumer_note: >-
+    Values stored in this file are already expressed in absolute probability units.
+    A stored 0.01 equals 1 percentage point and a stored 0.005 equals 0.5 percentage
+    points. Consumers read the stored numbers as-is and never rescale them.
+
+families:
+  - family_id: cpi
+    release_name: Consumer Price Index
+    release_cadence: monthly
+    separate_from: employment
+    shock_dimensions:
+      - dimension_id: cpi_headline_mom_sa
+        units: percent
+        expectation_source_required: true
+        expectation_gate_scope: surprise_slope_only
+        timing_study_effect_if_absent: none
+      - dimension_id: cpi_core_mom_sa
+        units: percent
+        definition: all items less food and energy, seasonally adjusted
+        expectation_source_required: true
+        expectation_gate_scope: surprise_slope_only
+        timing_study_effect_if_absent: none
+    discouraged:
+      - fitting every published component at the available event count
+  - family_id: employment
+    release_name: Employment Situation
+    release_cadence: monthly
+    separate_from: cpi
+    shock_dimensions:
+      - dimension_id: payrolls_change
+        units: thousand_persons
+        expectation_source_required: true
+        expectation_gate_scope: surprise_slope_only
+        timing_study_effect_if_absent: none
+      - dimension_id: unemployment_rate
+        units: percent
+        expectation_source_required: true
+        expectation_gate_scope: surprise_slope_only
+        timing_study_effect_if_absent: none
+      - dimension_id: average_hourly_earnings_mom
+        units: percent
+        expectation_source_required: true
+        expectation_gate_scope: surprise_slope_only
+        timing_study_effect_if_absent: none
+      - dimension_id: prior_month_revision
+        units: thousand_persons
+        expectation_source_required: false
+        expectation_gate_scope: not_applicable_no_surprise_slope
+        timing_study_effect_if_absent: none
+        treatment: newly_released_information
+    discouraged:
+      - a single hawkish_dovish label for the release as a whole
+
+expectation_policy:
+  gate_scope: surprise_slopes_only
+  gates_only_these_estimands:
+    - release_surprise_slope
+    - consensus_surprise_conditional_response
+  does_not_gate:
+    - event_timing_and_response_curve_study
+    - midpoint_change_at_prespecified_horizons
+    - payoff_coherence_distance_trajectory
+    - synchronization_and_replay_comparison
+  absence_of_consensus_effect: >-
+    When no point-in-time expectation source exists for an event, the surprise slope for
+    that event is dropped and no independent consensus surprise claim is made. The
+    event-timing study remains fully in scope: the response curve, coherence, and replay
+    comparisons are defined from the scheduled release time and observed quotes alone, so
+    they are estimated without any expectation source.
+  expectation_source_required_meaning: >-
+    A true value on a shock dimension means that dimension can enter a surprise slope only
+    if a demonstrably pre-release expectation source exists. It never makes the release or
+    the timing study ineligible, and it never blocks the descriptive response analysis.
+  event_ineligibility_for_missing_expectations: prohibited
+  timing_study_requires_expectations: false
+  synthetic_expectation_values: prohibited
+  late_or_revised_expectation_data_as_point_in_time: prohibited
+
+specification_corrections:
+  recorded_on: "2026-09-13"
+  recorded_before_any_locked_evaluation: true
+  outcome_inspection_at_record_time: none
+  external_registration_at_record_time: none
+  selected_for_favourable_results: false
+  corrections:
+    - correction_id: C1
+      field: thresholds.effect_units
+      was: ambiguous_probability_points_wording
+      now: absolute_probability_units_on_the_0_to_1_scale
+      numbers_unchanged: true
+      note: 0.01 equals 1 percentage point and 0.005 equals 0.5 percentage points.
+    - correction_id: C2
+      field: hypotheses.H4.uncertainty
+      was: bootstrap_over_synchronized_quote_snapshots
+      now: event_cluster_bootstrap_of_synchronized_coherence_curves
+      numbers_unchanged: true
+      note: >-
+        The resampling unit is the whole economic release, not an individual quote
+        snapshot. Snapshot level resampling is pseudo replication and is prohibited.
+    - correction_id: C3
+      field: expectation_policy
+      was: ambiguous_scope_of_expectation_source_requirement
+      now: surprise_slopes_only
+      numbers_unchanged: true
+      note: >-
+        Absent point-in-time consensus removes only the surprise slope; the event-timing
+        study keeps every release and remains estimable.
+    - correction_id: C4
+      field: study.frozen_by_role, study.human_owner_approval_claimed, study.external_registration
+      was: wording_implying_human_protocol_registration
+      now: locally_frozen_implementation_specification_with_no_external_registration
+      numbers_unchanged: true
+      note: >-
+        No human sign-off and no registry registration occurred or is claimed. Freeze-time
+        no-model and no-power statements stay anchored to 2026-09-13, and later synthetic
+        software experiments are not empirical results.
+
+cohorts:
+  primary: downstream_unresolved
+  primary_definition: contract whose payoff depends on an event later than the release
+  secondary:
+    - cohort_id: direct_resolution
+      definition: contract whose payoff the release economically determines
+      post_release_quote_response: excluded
+      exclusion_basis: sampled_direct_contracts_closed_before_release_time
+      permitted_use:
+        - settlement_and_assimilation_study
+        - pre_release_diagnostic_only
+    - cohort_id: matched_control
+      definition: contract with argued small exposure and similar pre_event activity
+      validity_requirement: argued_in_writing_before_estimation
+  estimand_population:
+    description: contracts and release dates passing prespecified eligibility and quality gates
+    generalizes_beyond_population: false
+
+eligibility:
+  contract_requires:
+    - stable_contract_identifier
+    - documented_payoff_rule_with_rule_hash
+    - documented_units_operator_threshold_and_rounding
+    - open_before_event_time
+    - valid_two_sided_quote_within_max_age_at_baseline
+  event_requires:
+    - official_calendar_scheduled_at
+    - archived_initial_release_payload
+    - reference_period_matches_contract_definition
+  exclusion_ledger_required: true
+  exclusion_reasons_recorded_per_row: true
+
+outcomes:
+  primary_historical:
+    name: midpoint_change_5min
+    symbol: R_km_300
+    definition: midpoint_asof_event_plus_300s minus baseline_midpoint
+    units: probability_points
+    units_definition: absolute_probability_units_on_the_0_to_1_scale
+    one_unit_equals_percentage_points: 1.0
+    rescaling_applied_to_stored_values: false
+    baseline_rule: last_valid_quote_strictly_before_event_time
+    endpoint_rule: as_of_last_valid_quote_at_or_before_event_plus_horizon
+  response_curves_seconds:
+    - 60
+    - 300
+    - 900
+    - 1800
+    - 3600
+  curve_restriction: actual_data_resolution
+  secondary_outcomes:
+    - response_speed_within_window
+    - finite_window_overshoot
+    - spread_change
+    - depth_change
+    - payoff_coherence_distance
+    - trade_price_response
+  trade_price_status: separate_robustness_layer
+  overshoot_denominator_rule: prespecified_threshold_required
+  settling_time_rule: convergence_relative_to_finite_window_endpoint
+  settling_time_denominator_rule: report_unresolved_when_no_stable_plateau
+  persistent_displacement_extrapolation: prohibited
+
+forecast:
+  purpose: held_out_comparison_of_network_information
+  prediction_time_rule: event_time_plus_60s
+  horizon_seconds: 300
+  target: future_midpoint_change_from_prediction_time
+  target_is_terminal_payout: false
+  primary_metric: mae
+  primary_metric_units: probability_points
+  primary_metric_units_definition: absolute_probability_units_on_the_0_to_1_scale
+  primary_metric_one_unit_equals_percentage_points: 1.0
+  secondary_metrics:
+    - squared_error
+    - directional_accuracy
+  directional_accuracy_role: secondary
+  models:
+    - model_id: no_change
+      description: predict zero change from prediction time
+    - model_id: own
+      description: own_market_history_only
+    - model_id: news
+      description: own_market_plus_release_surprise_and_shared_state
+    - model_id: network
+      description: news_features_plus_other_contracts_admissible_lagged_information
+  nested_feature_requirement:
+    - news_model_includes_delayed_direct_response_covariates
+    - network_model_superset_of_news_model
+    - target_contemporaneous_price_present_in_every_model
+  comparison_rule: paired_on_identical_row_sample
+  missing_feature_row_rule: cannot_change_comparison_sample
+  probability_forecast_mapping: documented_bounded_link_fitted_inside_training
+  clipping_reporting: required
+  log_odds_cohort_rule: interior_cohort_documented_with_sensitivity
+
+thresholds:
+  smallest_relevant_response_probability_points: 0.01
+  smallest_relevant_mae_gain_probability_points: 0.005
+  effect_units: absolute_probability_units
+  effect_units_definition: >-
+    Both thresholds are absolute probability units measured on the 0 to 1 probability
+    scale. They are not probability points on a 0 to 100 scale, not percentages, and not
+    relative or standardized effect sizes.
+  absolute_probability_unit_equals: 1.0
+  percentage_points_equals_absolute_probability_units: 100.0
+  smallest_relevant_response_percentage_points: 1.0
+  smallest_relevant_mae_gain_percentage_points: 0.5
+  smallest_relevant_response_absolute_probability: 0.01
+  smallest_relevant_mae_gain_absolute_probability: 0.005
+  units_reading_note: >-
+    The threshold numbers are already stated in the units named by the keys itself, so
+    0.01 response units and 0.005 MAE units equal 1 and 0.5 percentage points. Consumers
+    must not rescale the stored numbers. No data value is multiplied, divided, or
+    otherwise transformed by this metadata.
+  status: prespecified_scientific_choice_requires_power_analysis
+  choice_made_before_any_fit: true
+  choice_made_before_any_locked_evaluation: true
+  post_hoc_change_allowed: false
+  post_hoc_change_label: exploratory
+
+randomness:
+  master_seed: 20260913
+  simulation_seed: 20260913
+  resampling_seed: 20260913
+  resampling_unit: event_id
+  resampling_method: cluster_bootstrap
+  bootstrap_samples_default: 200
+  deterministic_requirement: identical_seed_reproduces_identical_output
+  row_order_invariance_required: true
+
+splits:
+  scheme: chronological_whole_event
+  group_key: event_id
+  train_fraction: 0.6
+  validation_fraction: 0.2
+  locked_test_fraction: 0.2
+  assignment_unit: whole_release
+  cross_venue_equivalents_share_split: true
+  cutoff_recorded_per_row: true
+  unassigned_split_value: null
+  unassigned_cutoff_value: null
+  purge_rule: drop_rows_whose_label_availability_exceeds_split_cutoff
+  purge_basis: actual_horizon_and_label_availability
+  fixed_day_embargo: prohibited
+  label_availability_rule: reject_when_known_at_is_null_or_after_cutoff
+  locked_test_consumption: once_per_registered_spec_version
+  spec_change_effect: new_version_and_new_test_cohort
+  cohort_reuse_protection: locked_test_event_ids_recorded_in_registry
+  training_only_transformations:
+    - feature_scaling
+    - shock_scaling_matrix
+    - graph_edges
+    - calibration_maps
+    - hyperparameters
+    - lag_length
+    - regularization_strength
+  transformation_fit_scope: training_period_only
+  prohibited:
+    - full_history_scaling
+    - future_graph_construction
+    - interpolated_future_quotes
+    - revised_macro_data_in_place_of_initial_release
+    - market_selection_on_post_event_volume
+    - retrospective_participant_labels_as_realtime_features
+
+contamination:
+  stop_window_when:
+    - market_closes
+    - sequence_gap_until_snapshot_recovery
+    - halt
+    - disconnect
+    - coincident_scheduled_release
+    - quality_boundary_reached
+  overlap_handling_options:
+    - jointly_coded
+    - explicitly_excluded
+    - treated_as_combined_package
+  frozen_before_outcome_inspection: true
+  no_fill_forward_after_close: true
+  pre_event_liquidity_role: heterogeneity_only
+  post_event_liquidity_role: separate_mechanism_model
+  post_event_liquidity_as_control_for_total_effect: prohibited
+
+quote_validity:
+  enum:
+    - valid
+    - awaiting_snapshot
+    - gap
+    - disconnected
+    - halted
+    - closed
+    - crossed
+    - missing
+  midpoint_defined_only_when: two_sided_and_valid
+  one_sided_book_midpoint: null
+  stale_definition: based_on_gap_detection_and_documented_refresh
+  price_change_age_as_staleness_proxy: prohibited
+  freshness_field: last_verified
+  invalid_quote_reuse_across_gap: prohibited
+  replay_orders:
+    - source_time_order
+    - usable_time_order
+  replay_disagreement_reporting: required
+  forecast_features_clock: availability_upper_bound_only
+  economic_panel_clock: source_time_admitted_with_quality_columns
+
+estimators:
+  response_estimation:
+    method: local_projections
+    pooled_by: release_family
+    orientation_rule: prespecified_or_payoff_shape_covariates
+    clustering: release_date
+    few_cluster_handling: finite_sample_sensitivity_and_broad_intervals
+  network_comparison:
+    method: nested_held_out_comparison
+    primary_metric: mae
+    edge_direction_label: predictive_unless_separate_identification_design
+    causal_label_without_design: prohibited
+  coherence:
+    method: min_max_distance_to_quoted_box
+    weights: simplex
+    inputs: synchronized_valid_quotes_only
+    projected_prices_reported_as: separate_from_raw_observation
+  uncertainty:
+    - cluster_bootstrap_by_event
+    - simultaneous_bands_over_response_curve
+    - prespecified_contrasts
+    - leave_one_event_out_sensitivity
+  uncertainty_independent_unit: economic_release
+  uncertainty_prohibited:
+    - iid_resampling_of_individual_quote_snapshots
+    - row_level_bootstrap_within_a_release
+  power_assessment:
+    method: cluster_aware_event_level_simulation
+    universal_event_count_rule: prohibited
+    derived_from: pilot_event_level_residual_variance_and_dependence
+    run_status_at_freeze: not_run
+    run_status_anchor: specification_freeze_2026-09-13
+    synthetic_simulation_is_empirical_evidence: false
+  freeze_time_estimand_state:
+    panel_built_at_freeze: false
+    model_fit_on_market_data_at_freeze: false
+    coverage_audit_completed_at_freeze: false
+    power_calculation_completed_at_freeze: false
+    locked_test_evaluated_at_freeze: false
+    later_synthetic_runs_do_not_change_this_record: true
+
+hypotheses:
+  - hypothesis_id: H1
+    statement: responses_are_heterogeneous_in_speed_and_shape
+    evidence_level: descriptive
+    primary_outcome: response_curve_family_across_prespecified_horizons
+    cohort: downstream_unresolved
+    estimator: local_projections_with_liquidity_interaction
+    threshold: smallest_relevant_response_probability_points
+    uncertainty: cluster_bootstrap_simultaneous_bands
+    failure_interpretation: flat_or_unresolved_curve_is_reported_as_unresolved_within_window
+  - hypothesis_id: H2
+    statement: other_contracts_add_predictive_information
+    evidence_level: predictive
+    primary_outcome: future_midpoint_change_at_300s
+    cohort: downstream_unresolved
+    estimator: nested_held_out_comparison_network_versus_news
+    threshold: smallest_relevant_mae_gain_probability_points
+    uncertainty: event_level_cluster_bootstrap
+    failure_interpretation: no_held_out_gain_blocks_model_promotion_and_propagation_claim
+  - hypothesis_id: H3
+    statement: some_apparent_transmission_is_measurement_induced
+    evidence_level: predictive
+    primary_outcome: apparent_lead_lag_under_synchronization_and_synthetic_null
+    synthetic_null_role: falsification_diagnostic_not_an_empirical_estimate
+    cohort: downstream_unresolved
+    estimator: source_time_versus_usable_time_replay_comparison_and_common_news_null
+    threshold: smallest_relevant_response_probability_points
+    uncertainty: replay_disagreement_report_plus_null_false_positive_rate
+    uncertainty_unit: economic_release
+    failure_interpretation: shrinkage_below_the_relevant_size_reframes_the_effect_as_measurement_induced
+  - hypothesis_id: H4
+    statement: rule_related_contracts_regain_consistency_after_news
+    evidence_level: descriptive
+    primary_outcome: bid_ask_aware_coherence_distance_trajectory
+    cohort: logical_payoff_families
+    estimator: min_max_distance_to_quoted_box_before_and_after_event
+    threshold: recovery_compared_against_quote_age_and_spread_baseline
+    uncertainty: event_cluster_bootstrap_of_synchronized_coherence_curves
+    uncertainty_unit: economic_release
+    uncertainty_resampling_detail: >-
+      Resample whole economic releases, and within each resampled release keep that
+      release's own synchronized coherence curves intact. A curve is the coherence
+      distance trajectory across the prespecified horizons, built from quotes that are
+      synchronized and valid at the same instant within the release. The release is the
+      independent unit; its synchronization structure and cross-horizon dependence are
+      preserved by resampling the release rather than its rows.
+    uncertainty_prohibited:
+      - iid_resampling_of_individual_quote_snapshots
+      - row_level_bootstrap_within_a_release
+      - independent_unit_treated_as_a_quote_snapshot_or_contract
+    pseudo_replication_warning: >-
+      Many snapshots or contracts from one release are dependent observations of that one
+      release, not independent units. Snapshot level resampling inflates apparent
+      precision and is treated as pseudo replication and as a specification failure.
+    failure_interpretation: no_recovery_beyond_the_asynchrony_baseline_leaves_inconsistency_unexplained
+  - hypothesis_id: H5
+    statement: results_transfer_across_venues_or_later_regimes
+    evidence_level: predictive
+    primary_outcome: separately_evaluated_replication_cohort_result
+    cohort: replication_cohort
+    estimator: independent_replication_of_the_primary_estimator
+    threshold: smallest_relevant_mae_gain_probability_points
+    uncertainty: replication_cohort_cluster_bootstrap
+    failure_interpretation: matching_failure_blocks_cross_venue_pooling_and_leaves_H5_unevaluated
+
+promotion_gates:
+  - gate_id: G0
+    name: cohort_and_access
+    required_evidence: eligible_cohort_recorded_with_observed_frequency_and_permissible_read_access
+    failure_action: narrow_the_estimand_or_restrict_to_documented_data_resolution
+  - gate_id: G1
+    name: replay_and_availability
+    required_evidence: replay_and_availability_tests_pass
+    failure_action: block_historical_latency_claims
+  - gate_id: G2
+    name: measurement
+    required_evidence: frozen_event_panel_passes_visual_and_adversarial_audit
+    failure_action: block_model_promotion
+  - gate_id: G3
+    name: falsification_and_power
+    required_evidence: synthetic_null_free_of_false_discovery_at_chosen_resolution
+    evidence_class: synthetic_software_experiment_not_an_empirical_result
+    empirical_result_effect: none
+    failure_action: block_network_interpretation
+  - gate_id: G4
+    name: held_out_gain
+    required_evidence: held_out_gain_beyond_common_news_and_own_market_state
+    failure_action: keep_model_at_baseline_level
+  - gate_id: G5
+    name: robustness_and_replication
+    required_evidence: no_dependence_on_a_single_event_clock_or_rule_error
+    failure_action: report_single_sample_limit
+  - gate_id: G6
+    name: claims_and_package
+    required_evidence: claims_match_evidence_and_remaining_uncertainty
+    failure_action: publish_feasibility_report_instead_of_economic_conclusion
+
+stop_or_pivot_rules:
+  - condition: insufficient_high_resolution_history
+    action: coarser_study
+  - condition: no_point_in_time_expectation_available
+    action: drop_independent_consensus_surprise_claim
+    scope: surprise_slopes_only
+    does_not_stop:
+      - event_timing_and_response_curve_study
+      - coherence_distance_trajectory
+      - replay_and_synchronization_comparison
+    note: >-
+      Absent a pre-release expectation source, the consensus surprise claim is dropped
+      while the event-timing study proceeds on scheduled release times and observed
+      quotes. An absent expectation source never makes a release ineligible.
+  - condition: poor_contract_matching
+    action: no_cross_venue_pooling
+  - condition: null_failure
+    action: block_network_interpretation
+  - condition: no_held_out_gain
+    action: block_model_promotion
+  - condition: unidentified_causal_path
+    action: keep_label_unidentified
+
+interpretation_limits:
+  causal_claim_without_design: prohibited
+  independent_consensus_claim_without_source: prohibited
+  exact_cross_venue_pooling_without_verified_match: prohibited
+  half_payout_relabelled_as_binary: prohibited
+  midpoint_equals_latent_probability_assumption: not_made
+  calibration_efficiency_and_commercial_usefulness_equated: false
+  negative_finding_status: valid_outcome
+  label_change_after_freeze: exploratory
+  snapshot_level_resampling_as_independent_unit: pseudo_replication_prohibited
+  synthetic_software_results_as_empirical_results: prohibited
+  empirical_status_anchor: specification_freeze_2026-09-13
+
+operating_constraints:
+  paid_spend_cap_usd: 0
+  order_submission_routes: none
+  funded_accounts: none
+  market_interventions: none
+  access_restriction_circumvention: prohibited
+  credentials_in_raw_archive: prohibited
+  wallet_identity_analysis: optional_secondary
+
+data_ownership:
+  candidate_market_discovery: PublicIngestion
+  endpoint_contracts: configs/endpoints.yaml
+  rules_registry: reports/contract_rule_registry.json
+  literature_records: reports/literature_matrix.csv
+  this_file_contains_eligible_market_ids: false

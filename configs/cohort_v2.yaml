@@ -1,0 +1,119 @@
+# Cohort and candidate-universe freeze, v2.
+#
+# The v1 cohort (`configs/cohort.yaml`) and the pipeline configuration
+# (`configs/external_history_v1.yaml`) stay frozen and unchanged. This file declares
+# what the v2 run resolves that v1 left to the code: which series are policy series,
+# how a release's candidate universe is selected, and which contract predicate a
+# candidate must state before it can be a receiver or a donor.
+#
+# Nothing here is selected by post-event activity. Every rule below is a function of
+# a listing interval that is recorded before the release, a declared series name, and
+# text the venue published with the contract.
+
+config_version: cohort_v2
+scope: >-
+  The ten frozen 2025 releases, the four declared Kalshi policy series, and the
+  pre-event rule that decides which contracts each release is measured against.
+
+releases:
+  # The release cohort is the v1 cohort, unchanged. It is named here rather than
+  # copied so the two cannot drift apart, and so a v2 run cannot quietly reselect it.
+  file: configs/cohort.yaml
+  cohort_id: core_2025h1
+  event_count: 10
+  families:
+    cpi: 5
+    employment: 5
+  selected_without_reference_to_outcomes: true
+
+# The declared policy series. `series_of` reads the leading alphabetic run of a
+# ticker, so a series name is matched exactly and a substring match on a ticker that
+# merely contains the letters is not a match. All four are declared; the v1 extract
+# selected only three of them, because a `LIKE 'FED-%'` test drops the sibling
+# `FEDDECISION` series, which is a declared policy series in its own right.
+policy_series:
+  - FED
+  - FEDDECISION
+  - KXFED
+  - KXFEDDECISION
+series_parser: market_propagation.ingest.audit.series_of
+
+venues:
+  # Only the venue whose transactions the sealed archive carries is a candidate
+  # venue. A venue with no transaction archive contributes no candidate.
+  kalshi:
+    transaction_archive: data/external/kalshi-trades/trades-*.parquet
+    market_metadata_snapshot: data/external/kalshi-trades/markets-*.parquet
+    metadata_snapshot_is_availability_evidence: false
+
+candidate_universe:
+  # The universe is declared per release, before the release, and it is the
+  # denominator: every declared pair keeps its rows even when it never traded.
+  selection: per_release_declared_listing_grid
+  candidate_rule: >-
+    a contract is a candidate for one release when its series is one of the four
+    declared series and its own recorded listing interval covers the release instant
+  activity_used_to_select: false
+  missing_cells_are_reported: true
+  # The metadata snapshot dates the market. It is not evidence that the contract was
+  # tradable at the release, and it is not rule-vintage evidence either.
+  metadata_snapshot_dates_the_market_only: true
+
+receivers:
+  # A receiver is a candidate of that release whose stated payout is a policy-rate
+  # payoff the study can read. The predicate is read from the venue's published
+  # contract text, not from the shape of a ticker.
+  predicate_parser: market_propagation.ingest.policy_predicates
+  require_readable_predicate: true
+  declared_receivers_reach_the_forecast_builder: true
+  # A receiver that never traded keeps its masked row; it is a missing observation
+  # and not an absent row.
+  quiet_receivers_keep_their_rows: true
+
+donors:
+  # A donor is a candidate at the decision date immediately preceding the receiver's
+  # own, on the declared calendar, stating an identical predicate.
+  calendar_file: configs/neighbor_graph_v2.yaml
+  relation: economic_exposure
+  immediate_predecessor_only: true
+  same_meeting_siblings_are_not_donors: true
+  near_match_substitution_forbidden: true
+  rule_vintage_required: true
+
+rule_vintage:
+  # No attested historical rule vintage exists for any candidate contract on this
+  # archive. `reports/contract_rule_registry.json` is a specification document and
+  # carries no per-contract rule record, so this requirement is unmet for every
+  # contract and the primary graph refuses every edge.
+  status: absent
+  evidence_source: reports/contract_rule_registry.json
+  evidence_source_records_rule_versions: false
+  settlement_outcomes_are_not_rule_evidence: true
+  current_rule_text_is_not_historical_rule_evidence: true
+  listing_window_is_not_a_rule_bound: true
+
+blocked_claims:
+  # Stated here so a reader of this file knows what the v2 freeze does not permit.
+  - id: primary_absorption
+    status: permitted_pending_panel
+    why: >-
+      the absorption rung needs the masked response panel, which the declared grid
+      produces; it does not need the graph
+  - id: conditional_predictive_propagation
+    status: blocked
+    why: >-
+      no attested historical rule vintage exists for any candidate contract, so no
+      donor is admissible under the declared rule requirement
+  - id: rule_calibration
+    status: measured
+    why: >-
+      the transaction-tape calibration ran at 200 repetitions per primary scenario
+      over simulated tapes through the same graph, observation, feature, fitting,
+      tuning, paired-uncertainty and promotion code as real data. Verdict
+      inconclusive: every estimable null promoted in 0 of 200 repetitions and the
+      recovery scenario promoted in 196 of 200, but two declared nulls emit no
+      comparison row by construction, so the family bound is not certifiable for the
+      declaration as written. Rates, certificate and registry are recorded in
+      configs/study_v2.yaml under `calibration`. This does not unblock the claim
+      above: the calibration measures the rule on a synthetic process and says
+      nothing about any real contract's rule vintage.

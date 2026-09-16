@@ -1,0 +1,2833 @@
+{
+  "access_failures": [],
+  "audit_complete": false,
+  "audit_status": "partial",
+  "candidate_counts": {
+    "direct_closed_pre_release": 0,
+    "downstream": 40,
+    "eligible": 40,
+    "reported_candidate_count": 40
+  },
+  "claims": {
+    "blocked_by_unsatisfied_gates": {
+      "candidate_selection_unbounded": [
+        "any claim that the deepest-audited contracts are representative of the whole candidate set"
+      ],
+      "candle_series_on_grid_without_interior_holes": [
+        "quote reconstruction across the affected window",
+        "any claim that the candles are a complete order-book history"
+      ],
+      "candle_series_spans_requested_window": [
+        "any statement about quote activity outside the returned range"
+      ]
+    },
+    "not_supported": [
+      "any expectation-relative statement: no point-in-time expectation source is available to this project",
+      "any order-book depth or intra-candle quote reconstruction from candles",
+      "any statement about messages that were not observed",
+      "causal attribution of any price movement to this release"
+    ],
+    "supported": [
+      "the candidate contract set the venue listed at audit time",
+      "the archived first-release values and the payload hash they came from",
+      "the requested versus observed candle resolution for the contracts attempted"
+    ]
+  },
+  "closed_markets": {
+    "count": 0,
+    "filled_forward": false,
+    "markets": [],
+    "post_release_response_measured": false,
+    "treatment": "kept in the direct_closed_pre_release cohort; excluded from the post-release quote response because the venue's own lifecycle closed them first"
+  },
+  "cohort_definition_hash": "e3914ccfaa1b48ea4ec3973f5849058eabd0e121d92a0349ff45a1132985338d",
+  "coverage_gates": [
+    {
+      "blocks": [],
+      "detail": "every reported candidate's page was retrieved from the raw store and its JSON pointer resolved to the record it cites",
+      "gate": "candidate_origins_verified",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any statement about the contract universe"
+      ],
+      "detail": "the venue returned 7442 market record(s) across the queried listings; this counts attempts, not usable contracts",
+      "gate": "contract_universe_attempted",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any statement about an eligible contract set"
+      ],
+      "detail": "7442 record(s) normalized into candidates; this is acquisition, not empirical eligibility",
+      "gate": "contract_universe_acquired",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "a complete contract universe for this event",
+        "any coverage count presented as the full universe"
+      ],
+      "detail": "every listing walk ran to a documented end",
+      "gate": "listing_pagination_complete",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "coverage of the families behind the unreachable series"
+      ],
+      "detail": "every prespecified series listing was reachable",
+      "gate": "prespecified_series_reachable",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any claim that the deepest-audited contracts are representative of the whole candidate set"
+      ],
+      "detail": "the candidate bound truncated the deep audit set; the boundary is a cost bound, not a property of the contracts",
+      "gate": "candidate_selection_unbounded",
+      "satisfied": false
+    },
+    {
+      "blocks": [
+        "any post-release quote response measurement for this event"
+      ],
+      "detail": "40 candidate(s) were still tradeable across the post-release window",
+      "gate": "downstream_post_release_cohort_nonempty",
+      "satisfied": true
+    },
+    {
+      "blocks": [],
+      "detail": "no candidate carried a pre-release close, so no direct-contract separation was needed for this event",
+      "gate": "direct_closed_contracts_separated",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "quote reconstruction across the affected window",
+        "any claim that the candles are a complete order-book history"
+      ],
+      "detail": "interior candle holes in: FED-25DEC-T2.75@1m, FED-25DEC-T3.00@1m, FED-25DEC-T3.25@1m, FED-25DEC-T3.50@1m, FED-25DEC-T3.75@1m, FED-25DEC-T4.00@1m, FED-25DEC-T4.25@1m, FED-25DEC-T4.50@1m, FED-25DEC-T4.75@1m, FED-25DEC-T5.00@1m; a hole breaks reconstruction until a fresh snapshot or a coarser interval",
+      "gate": "candle_series_on_grid_without_interior_holes",
+      "satisfied": false
+    },
+    {
+      "blocks": [
+        "any statement about quote activity outside the returned range"
+      ],
+      "detail": "series that do not span the window: FED-25DEC-T2.75@60m, FED-25DEC-T2.75@1m, FED-25DEC-T3.00@60m, FED-25DEC-T3.00@1m, FED-25DEC-T3.25@60m, FED-25DEC-T3.25@1m, FED-25DEC-T3.50@60m, FED-25DEC-T3.50@1m, FED-25DEC-T3.75@60m, FED-25DEC-T3.75@1m, FED-25DEC-T4.00@60m, FED-25DEC-T4.00@1m, FED-25DEC-T4.25@60m, FED-25DEC-T4.25@1m, FED-25DEC-T4.50@60m, FED-25DEC-T4.50@1m, FED-25DEC-T4.75@60m, FED-25DEC-T4.75@1m, FED-25DEC-T5.00@60m, FED-25DEC-T5.00@1m; absence before the first or after the last returned period is not evidence that the market was quiet",
+      "gate": "candle_series_spans_requested_window",
+      "satisfied": false
+    },
+    {
+      "blocks": [
+        "any quote-based response or spread measurement for this event",
+        "any statement that a returned candle is a usable observation"
+      ],
+      "detail": "at least one returned candle series carries two-sided quotes: FED-25DEC-T2.75@60m=1, FED-25DEC-T2.75@1m=2, FED-25DEC-T3.00@60m=1, FED-25DEC-T3.00@1m=2, FED-25DEC-T3.25@60m=1, FED-25DEC-T3.25@1m=2, FED-25DEC-T3.50@60m=1, FED-25DEC-T3.50@1m=3, FED-25DEC-T3.75@60m=1, FED-25DEC-T3.75@1m=2, FED-25DEC-T4.00@60m=1, FED-25DEC-T4.00@1m=3, FED-25DEC-T4.25@60m=1, FED-25DEC-T4.25@1m=4, FED-25DEC-T4.50@60m=1, FED-25DEC-T4.50@1m=3, FED-25DEC-T4.75@60m=1, FED-25DEC-T4.75@1m=3, FED-25DEC-T5.00@60m=1, FED-25DEC-T5.00@1m=2",
+      "gate": "candle_quotes_two_sided",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any statement about first-release values for this event",
+        "any surprise-relative statement for this event"
+      ],
+      "detail": "the archived initial release payload was retrieved and parsed",
+      "gate": "release_payload_archived",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any claim that the scheduled instant is an observed publication time"
+      ],
+      "detail": "the payload's own embargo line was compared with the calendar (agreement: agrees_with_calendar)",
+      "gate": "release_time_basis_named",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any claim of a globally complete downstream universe"
+      ],
+      "detail": "downstream series came from a keyword filter over the exchange's own listing (terms: ['ACPI', 'ACPICORE', 'ACPICORE-', 'ARGINFLATIONM', 'ARINFLATIONM', 'CPI', 'CPIAPPAREL', 'CPIAR', 'CPICN', 'CPICORE', 'CPICOREYOY', 'CPIDELAY', 'CPIEU', 'CPIFOOD', 'CPIGAS', 'CPISHELTER', 'CPIUSEDCAR', 'CPIYOY', 'KXACPI', 'KXACPICORE', 'KXACPICORE-', 'KXAIRFARECPI', 'KXARGINFLATIONM', 'KXARINFLATIONM', 'KXARMOMINF', 'KXBRAZILINF', 'KXBRINFHIGH', 'KXCACPIYOY', 'KXCANEUINFL', 'KXCHCPIYOY', 'KXCHINACPI', 'KXCOREUND', 'KXCPI', 'KXCPIAPPAREL', 'KXCPIAR', 'KXCPICN', 'KXCPICOMBO', 'KXCPICORE', 'KXCPICORE220', 'KXCPICOREA', 'KXCPICOREHEAD', 'KXCPICOREYOY', 'KXCPIDELAY', 'KXCPIEU', 'KXCPIFOOD', 'KXCPIGAS', 'KXCPINDEX', 'KXCPISHELTER', 'KXCPIUSEDCAR', 'KXCPIYOY', 'KXCPIYOYBANK', 'KXDECPIPREL', 'KXECONSTATCORECPIYOY', 'KXECONSTATCPI', 'KXECONSTATCPICORE', 'KXECONSTATCPIYOY', 'KXEZCPIYOYF', 'KXFRCPIPREL', 'KXHICP', 'KXHIGHINFLATION', 'KXIRANCPI', 'KXITCPIPREL', 'KXJPCPIYOY', 'KXJPMOMINF', 'KXJPSGINFL', 'KXLCPIMAX', 'KXLCPIMAXYOY', 'KXLCPIMIN', 'KXLCPIYOY', 'KXPCECORE', 'KXPCEHEAD', 'KXPPICPI', 'KXPPIVSCPI', 'KXRELEASECPI', 'KXSAMOMINF', 'KXSHELTERCPI', 'KXTOBACCPI', 'KXTRUFCPI', 'KXTRUFCPIYE', 'KXTRUFEGGS', 'KXTRUFGAS', 'KXTRUFHOUCPI', 'KXUKCPIYOY', 'KXUKEAINFL', 'KXUSCPIYEAR', 'KXUSEDCAR', 'KXUSEDCARCPI', 'KXUSGASCPI', 'KXUSUKCOREINF', 'KXWCPI-RU', 'KXWCPI-TR', 'LCPIMAX', 'LCPIMAXYOY', 'LCPIMIN', 'LCPIYOY', 'PCECORE', 'USEDCAR', 'WCPI-RU', 'WCPI-TR']); a keyword filter bounds the candidate set and cannot establish the complete universe",
+      "gate": "discovery_basis_is_bounded",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any statement about the primary downstream policy cohort for this release",
+        "any propagation claim resting on a policy contract"
+      ],
+      "detail": "40 contract(s) from the configured policy series ['KXFED', 'FED', 'KXFEDDECISION', 'FEDDECISION'] were acquired",
+      "gate": "configured_policy_cohort_reached",
+      "satisfied": true
+    },
+    {
+      "blocks": [
+        "any downstream policy count that would absorb a direct-release contract"
+      ],
+      "detail": "policy cohort contracts carry series ['FED'], disjoint from the direct release series ['KXCPI', 'KXCPIYOY', 'KXPAYROLLS', 'KXU3']",
+      "gate": "policy_contracts_are_not_direct_release_contracts",
+      "satisfied": true
+    }
+  ],
+  "data_limits": [
+    "candles are candle-frequency observations and are not order-book depth",
+    "the candidate universe is bounded by the audit's page and contract caps, so its completeness is not established",
+    "no point-in-time expectation source exists, so no surprise is estimable"
+  ],
+  "downstream_markets": [
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979749+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "2.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/10",
+      "record_hash": "90d74c7625ea4c97956b48e716963111c13fa79ef3b6dad28d8b24378d7dd8b5",
+      "resolve_time": "2025-12-10T19:05:45.636261+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "7bcdb481fb7dbd657e796817744599a3d7693ef6af0480ae2e4eb61dd0c60853",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T2.75",
+      "volume_fp": "16598.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "3",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/9",
+      "record_hash": "03b891ffd7a82fe633fc618b51ec7a86a2338a67e61b5991ff9a37503f2d2e3b",
+      "resolve_time": "2025-12-10T19:05:50.636355+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "76ca8d4d17d3f01ff90b5f67edad39a6e02a868c923d725cb78b9c17f92224e4",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T3.00",
+      "volume_fp": "24330.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "3.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/8",
+      "record_hash": "3fd3897c5edd7059a2ee37b757f423d354b2bab7a053027390ff326f8e638277",
+      "resolve_time": "2025-12-10T19:05:56.637447+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "7dd3544aabbe57a487c806a34bfde8a7ef2c44f85392ee4317dfd7dfe2730234",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T3.25",
+      "volume_fp": "11351.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "3.5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/7",
+      "record_hash": "29d9915c5918f2dbd368697b85aed7e4055cd971346410f67043685904ca50a8",
+      "resolve_time": "2025-12-10T19:06:01.638700+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "49219397de7ce4acce82b147198cb887d4fe25dc7f02fe36c5fd6a4031b66c57",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T3.50",
+      "volume_fp": "49476.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "3.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/6",
+      "record_hash": "2bb7bda86cf8c9b25867b06500de73c9cca8537fc02feb393fb9a0d1dbbeff86",
+      "resolve_time": "2025-12-10T19:06:06.473075+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "c9bb72bb39fe21c637595639d05811dd76a58fddbfab3a940fb78ce12598b8d3",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T3.75",
+      "volume_fp": "804003.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "4",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/5",
+      "record_hash": "9d6a36d0b47b3f450f49a3aeda083635228d3cb03c70afba5b0be2a030cc273a",
+      "resolve_time": "2025-12-10T19:06:12.641279+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "4e2aacef61cd13ea62f68df077391f543b506eb3a1e2da714d8d7149bf2b8582",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T4.00",
+      "volume_fp": "163654.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "4.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/4",
+      "record_hash": "ece1de25f727d110ef79705aa0c8e6af63eb250ab73ad5fe7eea9a5b690d4d79",
+      "resolve_time": "2025-12-10T19:06:17.651667+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "43af27471496fc4958a2fe32b9dd03e52fc858f83d8b2c4db572283d53cd3d63",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T4.25",
+      "volume_fp": "82209.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "4.5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/3",
+      "record_hash": "28b9c8b52a4d5858109904437d80cf093bb8fd81d164a6686842e0f1c559735e",
+      "resolve_time": "2025-12-10T19:06:23.439052+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "1b1ed21c0d4cda74cf220479b9a298639f88857f0d283a83819103cafffd98b8",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T4.50",
+      "volume_fp": "25217.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "4.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/2",
+      "record_hash": "f479d02546331eef91d0f46bfea2ae0aa872cec1c887e820150598f045fef521",
+      "resolve_time": "2025-12-10T19:06:28.452585+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "fc76f014a59d9eddf29a99814d54fd26ec1d5bb4357d11ed9439a556e88e48b0",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T4.75",
+      "volume_fp": "7710.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/1",
+      "record_hash": "22502c6f355bb35aa3f71178807fbc491b285ea9f21a330101f592bd8d79d8de",
+      "resolve_time": "2025-12-10T19:06:34.446537+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "bac2d0ed2b9907ade5e48d49aa9ad2bfb9daff5121df63ad3db37900749cc3f3",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T5.00",
+      "volume_fp": "3769.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-12-10T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:56.979750+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25DEC",
+      "exclusion_reasons": [],
+      "floor_strike": "5.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/0",
+      "record_hash": "20d2bff6f4f25f6d4a780e36b32cff3013c6c370ac16895e62e7bdcb4dc14029",
+      "resolve_time": "2025-12-10T19:06:39.463858+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "1d0777476c8d8c5043b22c9fd8c324fc013b1868b8b13ee4eafb56e51d2d662a",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25DEC-T5.25",
+      "volume_fp": "11837.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2023-07-05T15:30:57.769681+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2023-07-06T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/9",
+      "record_hash": "58aa99453ef8301de6529484a5b07c92f11c74ca8dc7a9013cdc62bda3b3de7e",
+      "resolve_time": "2025-01-29T19:16:21.874460+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "7c0f8f2c6744e2d5220fb5da3c34d42a8e4f7457dfb48fdce2095b2543c88639",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T3.25",
+      "volume_fp": "12513.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2023-07-05T15:30:57.769682+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2023-07-06T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/8",
+      "record_hash": "85df186822a96334f57d8e1d3a389f5f30a1b9d8eace5acc855f3091fce54d13",
+      "resolve_time": "2025-01-29T19:16:27.874129+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "74b66c4a0ba2fbcc10f7366463c581f839d544723390866cc7809a80e39d2ac5",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T3.50",
+      "volume_fp": "11805.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2023-07-05T15:30:57.769682+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2023-07-06T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/7",
+      "record_hash": "12e08eed53a23d12044803b6a7a041aa47670676ec093680d8d58894ab983af7",
+      "resolve_time": "2025-01-29T19:16:32.883734+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "f2fadac71b482c2c15aeb6e6c2a2f954d1bc1a6e0be2a634cbbbfd8de7a90c49",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T3.75",
+      "volume_fp": "7820.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2023-07-05T15:30:57.769682+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2023-07-06T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/6",
+      "record_hash": "f23bf6fe1f3cfb55f339b17572561d5aae831cc21599c4a259a40481a348bbdb",
+      "resolve_time": "2025-01-29T19:16:38.874242+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "1fed6299402afe04ca06ef575d2bab1f6d9ef96ba2cd060dabc0663363e2400d",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T4.00",
+      "volume_fp": "53985.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2023-07-05T15:30:57.769682+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2023-07-06T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/5",
+      "record_hash": "95efa9b8e6a87c11e6a6dee7dcc988fa95d098b17f6910eff2375ac72cefd267",
+      "resolve_time": "2025-01-29T19:16:43.873732+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "226eb3cbf68967daaba9dbb28fba31063a29713ecd5506dc09909a71a5792022",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T4.25",
+      "volume_fp": "168906.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2023-07-05T15:30:57.769682+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2023-07-06T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/4",
+      "record_hash": "5ca5ac683353728897d8364d7a0c7e3a42816f6730af693d3dcd5b612a63c913",
+      "resolve_time": "2025-01-29T19:16:49.874911+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "09ab93eb7fa3330e071d9c314e2d73a4f7f80560c1bf0788b7121e97fa108807",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T4.50",
+      "volume_fp": "79292.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2023-07-05T15:30:57.769682+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2023-07-06T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/3",
+      "record_hash": "e56e42d8318a277d5364cd2275d86fcb685378ee2e7688ce79e00af7698b36e1",
+      "resolve_time": "2025-01-29T19:16:55.873891+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "02321de69e5f86b43c15b6223d7193ea80b1752b7fa574ad3b722a1aa8263338",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T4.75",
+      "volume_fp": "55816.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-02-16T20:00:36.949966+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-02-19T15:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/2",
+      "record_hash": "95375a0ebda0c8f9c38b3609f9cf7c96a60e30ab859692c12dfef6ccecad70c5",
+      "resolve_time": "2025-01-29T19:17:01.873757+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "19e84d0c1446288e8806e51350f3ef7926e789062da48138b68a263c6168296d",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T5.00",
+      "volume_fp": "29913.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-02-16T20:00:59.683453+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-02-19T15:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/1",
+      "record_hash": "c0458927b82b2d89973cab7e2b6d22dc514c0fe2edcae93d5e77cccf8f77cc2b",
+      "resolve_time": "2025-01-29T19:17:06.883822+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "a1174b87dfbbc102a08c54d16967032763ffbe6b569b4215cfa9ffcc00daa8dd",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T5.25",
+      "volume_fp": "25724.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-01-29T18:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-02-16T20:01:17.662701+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JAN",
+      "exclusion_reasons": [],
+      "floor_strike": null,
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-02-19T15:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/0",
+      "record_hash": "4daab8ef3b84e49f7f6b5ccbd96e47efbef45ad2dc610a3657c2dbfccf56e3b9",
+      "resolve_time": "2025-01-29T19:17:12.873927+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "ef852cba3cf2dbdf26cd193a1589966e61cc5d320ff4bac57d619711445fe182",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JAN-T5.50",
+      "volume_fp": "10881.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723666+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "2.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/10",
+      "record_hash": "a89a8fea9b5d7b4726cae6b4efbd66dfdcfde0ea4a459e27415b7d867b926685",
+      "resolve_time": "2025-07-30T18:05:55.165403+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "3e5a732445d45c5b9b100268ee069a1d31661f80939f75f1f2e73b1027de44b6",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T2.75",
+      "volume_fp": "85746.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723667+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "3",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/9",
+      "record_hash": "af53eefc39fc761573b85c5f478a31e011f3357e57abf712f4527354cb4ae77d",
+      "resolve_time": "2025-07-30T18:06:00.185341+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "af3110324c2b792f1bf0fd3b9f5b9c34d853796864cc727074529a4bd9679eda",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T3.00",
+      "volume_fp": "17883.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723667+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "3.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/8",
+      "record_hash": "9cd341acf93c064e753f2f69b8a118f9d4d5e4b0b55fdbee118b1b3877b51365",
+      "resolve_time": "2025-07-30T18:06:06.165631+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "b561c5b9533ded84cdee594bd1c0a795e8f0890a9b022be7f656eb93d8e08c20",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T3.25",
+      "volume_fp": "13956.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723667+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "3.5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/7",
+      "record_hash": "b11344e53a3f53410ad8ee243f51fcb2d8b0e82363e7ee23c6a42735871aad5e",
+      "resolve_time": "2025-07-30T18:06:11.164988+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "d20d578b06e6240ec6077f07dd224ec8efabd9685637194e8d0ad75dbefae467",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T3.50",
+      "volume_fp": "14829.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723667+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "3.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/6",
+      "record_hash": "d1ce10ddbc9149188dfb47d341e25629ad518880cba998ec25ef0b4b920b062d",
+      "resolve_time": "2025-07-30T18:06:17.175122+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "40a65ee06ace5ab4996ff3c9cc4004a61036c90510401c93e04c38ca54a95d2d",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T3.75",
+      "volume_fp": "22994.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723667+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "4",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/5",
+      "record_hash": "8d8ff2f8e0f1519bb13de73409cffd80d73ddc20cf6231cf81ad46f844e768ac",
+      "resolve_time": "2025-07-30T18:06:22.165787+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "5164c812449a4fc11dbe9bc5ddbbd63564086ebc64ab5c45706d357bcb37f262",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T4.00",
+      "volume_fp": "155789.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723668+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "4.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/4",
+      "record_hash": "42177d9346c26c76a1848c538ed33c5b29f479b5424efd2cf6853002f2b19ae1",
+      "resolve_time": "2025-07-30T18:06:28.175560+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "d9f34461f58b63db238775d49095b58c0777b56a5da5ee1532aa9715a6ca921d",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T4.25",
+      "volume_fp": "1283855.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723668+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "4.5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/3",
+      "record_hash": "5b74c819dcc66949c7e1acebe55f09ba356200999af9895bd0af68b30628d081",
+      "resolve_time": "2025-07-30T18:06:34.965862+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "7afdc7f6c1b19c61f8266c88ef88fd88e156e819445cd462df37b4be0a4f2aa6",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T4.50",
+      "volume_fp": "173893.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723668+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "4.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/2",
+      "record_hash": "310f4fdf476fe7d0b57e551e39534fc6642d339a5a2c32f8542d27795b676a0f",
+      "resolve_time": "2025-07-30T18:06:39.165872+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "43dcdf7a8dbb1e981c0ed000a0b7b82c84ff46ebd32878fb5d5863d1f596b4e7",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T4.75",
+      "volume_fp": "27004.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723668+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/1",
+      "record_hash": "976a159cf75daaaddd1a25fedd63e0bd3456ea2a43e37bb59bd72a688fd1038d",
+      "resolve_time": "2025-07-30T18:06:44.175513+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "540d1b2bf5e27cd94b5e5f02c39c305d9aa2a50ed724132033c386f372936a17",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T5.00",
+      "volume_fp": "6635.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-07-30T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:28:03.723668+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUL",
+      "exclusion_reasons": [],
+      "floor_strike": "5.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/0",
+      "record_hash": "b015ed7635d158cda528fa351a2974b81dc2ddc171d0102af4febfcd40629abe",
+      "resolve_time": "2025-07-30T18:06:50.385172+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "f62403d51ac44bf36983bcaed9d7bccde3fef9d820b09cf0e75657fff3971c0e",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUL-T5.25",
+      "volume_fp": "14776.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "2.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/10",
+      "record_hash": "3650d938d6dd22771e8f7dd2827edf75ceaae83494bd04e250269b10fbd2b80f",
+      "resolve_time": "2025-06-18T18:05:47.391139+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "1a6dd49fe5ca639ee98fe50c94fdc816059c57f40b99492abb8974824018352a",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T2.75",
+      "volume_fp": "58724.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "3",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/9",
+      "record_hash": "c72f9391ff4efcdfc2530db14cc6cffb56cc83bb469edcb3b211f036aec36fcc",
+      "resolve_time": "2025-06-18T18:05:52.390630+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "ab3393abcb7d18c0fe80a98ab53fe4d42709434b34bb7f3eabf1cca5c26569f4",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T3.00",
+      "volume_fp": "29090.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "3.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/8",
+      "record_hash": "9cab357d8c927a1186b895bab3e116379d4c83ebbb2e067455c441a07c338c32",
+      "resolve_time": "2025-06-18T18:05:58.460972+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "8c5e59e0e7013b3a7665520804b58e19e257a16799989557bc7f4dd9417f64a2",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T3.25",
+      "volume_fp": "93034.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "3.5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/7",
+      "record_hash": "c27afca864a664b4584f44c8ff143ed39eb0f59208146c65d2dd3099f5b6b1d2",
+      "resolve_time": "2025-06-18T18:06:03.541672+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "a015eee1013cc2a17edfb5c5c1c7e6ad7dd7dbfc8f34e7cc7d8ab4a5879163a6",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T3.50",
+      "volume_fp": "32812.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "3.75",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/6",
+      "record_hash": "ee7d0971e8daab7c69ad40a9d7874a58d1d6bd7c8e3a7c49a8fa5fa4ee51410e",
+      "resolve_time": "2025-06-18T18:06:09.390512+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "63fe0a2062705769bc91c61ca6206c43addc517866ee8f2e5b87975c7c37fd6b",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T3.75",
+      "volume_fp": "44605.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "4",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/5",
+      "record_hash": "58cd8f006b0889f2a8642f09917d9ae6ff1177e720209ab861fd63db09e86274",
+      "resolve_time": "2025-06-18T18:06:17.390625+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "70d0494487150edd612aecd4890e90576810eab6c55c065b5514b36370374f55",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T4.00",
+      "volume_fp": "199707.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "4.25",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/4",
+      "record_hash": "7a857399f8037c6f3f7d42eae553153bf59d374b44e495d1b2a5dc39def54e7b",
+      "resolve_time": "2025-06-18T18:06:22.390484+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "9587d881965b599648c10b32e27dd4dbd3ad73f008f2f01a56d4b062795c23bf",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T4.25",
+      "volume_fp": "747523.00",
+      "window_overlap": true
+    },
+    {
+      "active_at_release": true,
+      "cap_strike": null,
+      "close_time": "2025-06-18T17:55:00+00:00",
+      "cohort": "downstream",
+      "created_time": "2024-08-20T13:27:43.968537+00:00",
+      "created_time_is_not_a_rule_version_timestamp": true,
+      "eligible": true,
+      "event_ticker": "FED-25JUN",
+      "exclusion_reasons": [],
+      "floor_strike": "4.5",
+      "known_at_release": true,
+      "lifecycle_eligible": true,
+      "open_interest_fp": "0.00",
+      "open_time": "2024-08-21T14:00:00+00:00",
+      "origin_resolved_against_archived_bytes": true,
+      "partition": "historical",
+      "policy_series": true,
+      "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063",
+      "raw_items_key": "markets",
+      "raw_page_index": 0,
+      "raw_record_pointer": "/markets/3",
+      "record_hash": "27a578302e8c56a59a09ce9c4aeb5d8bb00a7231975799f68632391ad99f4518",
+      "resolve_time": "2025-06-18T18:06:27.990861+00:00",
+      "rule_available_at": null,
+      "rule_available_at_basis": "unknown_no_verified_rule_version",
+      "rule_hash": "9d4696a92c40579128ca6ac171e2a72f7dcf5a76fa8dfcc4b57198e78b23a83b",
+      "rule_version_evidence": null,
+      "rule_version_verified": false,
+      "selection_basis": "series_lifecycle_only_no_post_event_volume_filter",
+      "series_ticker": "FED",
+      "status": "finalized",
+      "strike_type": "greater",
+      "study_eligible": false,
+      "thin_liquidity": false,
+      "ticker": "FED-25JUN-T4.50",
+      "volume_fp": "457475.00",
+      "window_overlap": true
+    }
+  ],
+  "errors": [],
+  "event_id": "cpi_2025_01",
+  "event_status": "audited",
+  "evidence_verification": {
+    "cited_hash_count": 187,
+    "failed_hash_count": 0,
+    "failures": [],
+    "manifest_hashes_not_cited_by_this_event": [
+      "0043b1c986811a129cfbfcab0b17a28265000aa43d803b4c9c036f38fd00ee3e",
+      "006eb47c07392a6137b7a8b959ce9b0882b5282e67b5e5319cbfa5b5d1ea17bc",
+      "00d0a96f2a1c930b3c4c65bb09e65d122149f262e2ae25c24bfc621b344410b2",
+      "026c0849d542f4c7690c1cd98175fb09c6a6b885827c3e13ab4b231f0013d3bc",
+      "033c99d6f3d114b268ef565c9a0d85d24c52584d3b1645d20f441e965b2b58e2",
+      "0377d8726e49dc355d0a835f0ab2b36d32627eb237f62928ed3ebc6ce5e90886",
+      "04be8f008c10fb70d84044e39032b1c7a4a7dd0ac1b1122b7e9622df55a81ec0",
+      "0502ddbdf8f46ba3709bbc96b773956ee7adc5a8587b87abe4045b533438092d",
+      "059540294b0c79959574bef2619732bd208112a775b3e212a68a625b1475ac12",
+      "0710fcbf31cce8f3c7c59e5e5d3eef1659ffdd404564ce84e0d00f2248d1533a",
+      "0749e7036ac8ee14e44e6ac270397386d783691198cbb97a8d6307de8442f4cb",
+      "08553e97a041fa66a80693378766f0c1c4e1fc365624be0de062f2782ad3f58e",
+      "096d18db595ff2a18f664415ce5c55c25c9fb61a4d37ce533bd43a63f89cb514",
+      "0a3d7e7c82dd06365f44c3fcad3dd7641e8d6ecf14d9040053c207709181f398",
+      "0acbd3edfa6ca850e93f7af1b4ad75190b86c823d863f5f8835ce0be7b51470b",
+      "0bd4f64c41b08c0cfe888aada900e0c2c7750863cbc164b0152d70339e6f0f77",
+      "0c0d323f24efcd10c14d4f9d31a7c533c29a723cb4620e4da76c39741086d101",
+      "0c88dc0016e65d39fc354af4f5ee0fa5e9a17e85c843443f523e0dfa1b16fc8d",
+      "0d251106b3b9bdd352c44fd8f62a66b7a00e3b049892ffa770a4475594d8b7b6",
+      "0d2befd92f3a14652d0e11b70fac46b293d475bb862a1075b5b59e1dddb24768",
+      "0eae0ce511ff4fbc4a33644eeb1db4dd76ee694b9323613c773c610b736e490f",
+      "0f220c0630acea2245a182fe875c1b78ce5024e68e499e76c215f2d766238e59",
+      "0f7313b90b5ad790c9acfbb6b8ebc06ea03b979d122f87e17c869ba604d7be76",
+      "102337f734525e6cb18f3828eeb2ce5812b6fcd7772bd9e26150090d54cd9b44",
+      "1281bcf168b2a82b2d3c9b025bdac4e757bfb5de9d115e9719e6d50c623d72b7",
+      "138820576f737b764e37d03fab03851ffc35dbf1f4d30cebccdd272d07f17ae0",
+      "175b43a7fff933515d35177f4462742da917216cca73498a42c43bb7ed95e89f",
+      "189ea56fbdffd917b4ea1feadcdb53ef4ed0e5cf0771730e726c666537d1dd64",
+      "1a24b11b965ea23d9501b9ec7de6420eb117110f8d0088afbabfecb07666ee5c",
+      "1ab53be6a1a17b8deee160532a62580326e3e3c7c1dfb06ab6359e5d6b012c4e",
+      "1ca231678560266b258d9d57a2dee93da5cc0f8c404732122c618082813e3eb4",
+      "1fa9926a66713a48a84ebb5a742d935828c13c2984e532450fcbc70066319dda",
+      "1fb9fdde57a71166c0e17a6e29d8d605cd8269ee3d2fcffdd69ece82f5ad33a6",
+      "203032c03b820ad918797c916037c85ec3b984b762519d5803327a53ce5685de",
+      "207996b00c5429f18bccfeec5a3e688b4e35655bb378809f5eb9916fc2838a45",
+      "25e86aa59d3288ece1ef29eb45ff3c941bca22af3237d90eaec4b13c41a9ae10",
+      "283b100ba888e9ef4052796d7c7c65c19ca792fef8e7dd07c0f65df6c99d0b26",
+      "2989d85af47331814eb8e214d76b0df8f7daaa0c4e4ac4bc6bd77a18da95f3c8",
+      "299d5404cf346686410d82dd7e66af693ff40838656bbb4949efefca5867b5cd",
+      "2ad7248cc34fa015dabcaee9a91bba5124084a7c123fbb64b7434e061870b6b8",
+      "2bc248cfd897ca7954e948c1a34b77a7790a0abd7c0a935a8a082c59a5e96201",
+      "2c546651e25f1b95e553a52616ce0930b99dea6ecd2cc78d36b0b77864dcfd1d",
+      "2ce0b71e22f87fb1a2b982a0f4a4d773924d7498b07afd959acbabbe57bbcdb4",
+      "2e38fec2200006714fecd7eb74e911bdf07a11fbe78b5891fd1508d901c24cc6",
+      "2f6b6658761d4efb32f9cef04a27cc2a01dd8eb9460081b70c1ddd694e7521f5",
+      "30340f54c80055034165ad4639e81132304e8dd0907f1a55013cbed14560416b",
+      "315601568a9a2151aeb8c0f9b063ca35b4d3a3278cdd170416c664b0d1494008",
+      "3207b703da7db99b8f18f73c593ec4e0e88a3d98c5c990b1577b46d6989441f7",
+      "32bb249dc027e7ec53376554113cc0a7f7b112679bf735d463a092d986888ac1",
+      "33354d5533521da8829c2fced85685035879d1457fd3538aae84f01ab9f20e55",
+      "34d338f6a37cc0746adc2f6535adf2cb5019c231fd582789c058e3f221a5dfba",
+      "3527b0322a95acb87e28ca330c0d2bae79dcf9fae1f8d9593b19c16c60cb0161",
+      "38ce40e5f7d133c3182aefb5ea641b75f5f95712801f954c10a2606ebe9380f5",
+      "395651d6617d2c60f259b67f3b474e2c481e86469ff4715cc2c3f7243a3dc622",
+      "39736d4bf8dbe854f49375d889ad8fa9f9646ae26ae7130540a9274743c29ce7",
+      "3b6a767171cc0f963f109033d36e751340db2200abafad1201fc3108e6e587ac",
+      "3cd69414dd0f495418371adc884aa978d15243787723ec3d2283ee821e27c2fd",
+      "3cfc341608b78df7482579f10345ca95c95abb0ce332f12ef6e4c93b8b046571",
+      "3df5c3cdfd152fd3f16fd090e2af960d4f221b931fe81311e54f6d43e7b75de3",
+      "403b5324d826da261ee29878a13765e017c702b19af5218b9f5c6f29f51b90d3",
+      "416ee4c0bab196ba51061a5cf61b918a2df135242edcda809eeafe92eba23412",
+      "41ad575b37a5076e091db7ef8094c1dd9fe026d7781ef3b0c3a9dc15c8fe63cd",
+      "41f367783fdea979679cf1fe07359ed5749f890ce32555d5911bb23dfda78be3",
+      "42542b690bfe2d52782326a094114df40c72117e66fea6e00eeb0be2fee1e800",
+      "47d515e5a1f2745fbe262960cc57ebc33ab47ad3e886c01cd062b7a73a14e2b5",
+      "48880a536878c965d70bc3bc9b5f7ea685e9daee4794b40c36abdfc9a3d043a3",
+      "4b95cb25d08f980907f7cf915efe803e971fdedd3ebfe4c7213121386e373b53",
+      "4c5065a24aa495466ce4eca5fa646bccca36b41f4fe7d6f0ebea5830e91b4954",
+      "4c5edbb83ba60e2b48804a03d7b72dcdd5653ce1565acbdb27dd7bff7c3bb3b9",
+      "4d234e1a34bff999954aa996e9fd663646c05a37539ea0184ee847a06f8332bb",
+      "4d69fed47df0c8ec2b028ae9e69a1378b60290c90083228536e10955d741181c",
+      "4db499afb47e14fe48f425f7eb168589cd74702087aa6faa638c9f258ad03330",
+      "4ed55d17b45b904f6441a2eb077443f27b9847e2fe6c0c45dc880a378d9f30c3",
+      "50af3e48122dd8f8e3d1680ba4c5ba0c4356717e7fbfe702b7a6615881b67b86",
+      "5125281b2188d40bc15f46a7773c3b163191c8432ca95c0c5d75b50c86ad8018",
+      "537791cf9a2cffb05935a2b460431c712e87f05593e0eb3590d34e38efde1d6b",
+      "5377977dacc211f7f9b2de365370370104b5252321a9c9e42681c2a073d8acdc",
+      "5634681c817041a4909cd52cd96dcdae2b68afcd96653fd6da421f2c721b7db4",
+      "577ad9c31213a9732b9c88ab6bb17145893c054fff6e89e7875903aa4babc2f6",
+      "596156a5450a9ed2dccf8bf8c3d16e52fb2c3892be1751bca25951558b3def9f",
+      "5af3a49b18b3c402b406ffd9769e789ddf04e3e583524631c6d457928c52aef6",
+      "5b796f9f46a5a47d3bb28e0bdca14cf0f109a1f72d41f2a036226db1e774c31c",
+      "5ebb2e492256b9c8c4453dbfdda2ef3a1a9a483d87e916dd75020158b74182ac",
+      "5f2813ac88e85f892bcee60d515f240557c8e6cb397841e24ccf160f1f9dbb48",
+      "60a88cbee9ccebd371a8c53de332f30716ba03baf41120722c334c9213816e77",
+      "611e184d24f2ecdefab481ef1a94606225d38a3f17bbcd6bb73dbbcba7030838",
+      "6240c2733f24da3b59852524cd6552258fa6061edb85e18d7e23ad32b5dde0f1",
+      "6368cdb71ba75abfc3a6418144d94f03e9e3b75941bf4f3064b230c3df474196",
+      "63e63d3c026ab9d23703927d7d1073afbaa7c4552d64702dcda3d42f308c07ce",
+      "6475ed149a211102ede0b57ab5a3b27d3c15ba55861e5d32accf5b6fdd8450e8",
+      "6551e59c53712144de8a35af31f1a00303a394276e508957bcbde847d6d9f1a9",
+      "65e91a010a5b9fc805b55aeb02f2806bf3e7fae9cca81f0394208fa696d3400a",
+      "65fb2ef2f587753bf2215acc5dc209657b2c87d3b275079e868712e338275dd5",
+      "67319bfdd2712621ba3b9eaa5d7b87257d00161d1a00910eb9da4bddc7990953",
+      "69e24f2d324650ebc1a44714a952802a6dda195996836333e0f10eb415c8c14c",
+      "6a5464ec1bd63079d7c9d0fc7fc86568919a4091c005f31a80e16843202b29e8",
+      "6acfc5cd2ece0106cdd8f804207d7e8714d4409e86a935872022bbf5792dc636",
+      "6b5c6e0a4781185da75b78b63645e5881aa4cd09a2fcc9861dbc846a2addb408",
+      "6c4949292f873cf303f693f02c76225d03009a34d74a8aa8fcb8fd4d8f209985",
+      "6c92bd07c14fe4907996193c1994081ea72fc14a44eec542b1166e882965b6eb",
+      "6fd56bf25f6503cea596ce8049b7e0c9fd751c1a4aee2b14afa1abe5cd97f38a",
+      "6fe34622f3685899a93768f5b0e9fec35d83c812b1ade9baba83cc80138631a8",
+      "715d91bc42512e07e4127625be5d822745585b4fdc486f9ff14ca1481a81efa0",
+      "73aad2fd4bf322d0cf0811cb1c25f57d4c9c04641b4c6a820bf8b2be6d14c210",
+      "748e323d8e2f53d3794ceabdbd621880f46a7bc0070b0d1d9211b6a289fb25e7",
+      "74ccfd02da9fdaa8aec714ece582a9f4b7d07ba02621ab062897027930814f64",
+      "753c0ccac8c1ce0ceb12c05f275e9477218c8968dcd9bc6b9fce90b84a202f58",
+      "76032d9a20f4dbdc6783eba38466201198c9c4814d8158183b9c9eafc4a5f805",
+      "76557da43bd65ac4b73a89785b01ef8432615a7656648e08799fd964b5cb994c",
+      "78edfb0fd3623fd03d98b5f246a9b91b71def4ba53c0080b55e17a360fd672c6",
+      "7952effab14c0429929bf8b45e4c40e8d99ac0c8ceb51eae2146d8f2fea7fde7",
+      "7b17e14b2377fe459d751b3dfed81616ad9b3235db67447dbb1b8ed779cf84e1",
+      "7c56a150c32eadefa3811fba460a9c5dbfc631eba2dd9f6ebe06ffa4560dc3e0",
+      "7c57011d5d860ee75a559fd43e92bee05cc1a605c5b864713cb2149fddea2e41",
+      "7c6dd9767d9b6403444fcea920f464dd51ed4371c1dea1ceb943c0b1476a67fa",
+      "7fdc16b7eaa318f9c80528078bb8621d7668b2a68fe52a8cf5fe23e12282698d",
+      "80c8537b83bbb4ef0a781552ff655893046476f45917b4fab3dbd7538a78d929",
+      "818a2ca1796f0e441b1e187154ecf083986894ec8879850e8c8de5632c21854d",
+      "81d68ae1cab4fd8b9a4492296e2735cf27f748dc47ed5bde55239d56b0050fd1",
+      "82a42a38818bbfe802db571b7761b9c1037cc358a99f487886916f72efb9b100",
+      "82ad0ec5d82f299531fee112354bf76d896ff9c1616734993b91e7b7bcfd95f4",
+      "82c2a07cf94082d15d5019091b9b722a1bb49736a918efbf80eb49e8ddb8864f",
+      "82e5a816180b7f5fe138c8a4ad69d39e7dbf6be0055cecaf7fdee4fbfc97d239",
+      "834c1657d49b68fc4d544fa892c0936323017a9e2c6319d3d1c66309131848cf",
+      "843b10416361dc940e32ad06f9e4aed2705241d8fd206fd7cb58b3323e24bea2",
+      "85fcaad8b00893a57f0887f9f6c2f4c086e9074b911732ed80bdfe6d72c38ec6",
+      "862608b2989e318aeb19a8114279db6fab57f9b167d45042dca8038df0371eb1",
+      "89dfc5edd6a0df38c468690b84fe0e5341d700b2e4e77ea092c6a294a8c1746e",
+      "8d76b5e0f06f42521a0d325ed4dfa56985629fab354dde5b3ac52269e487fa53",
+      "8e030388e4a80ee83703e43b84469c0c00834be28b5a6631ab3a743de31cb811",
+      "8ee2538ce0bd68ed75ff88813fdef4b536c1953ad18fd4ac99952837d9b07ee2",
+      "9078bc38ccbcbfb09c2787ed3c3389b31c397596ba661fa6b58247f72c12433f",
+      "92ae64bb1698a0a34409f5e1fb8a9ecba87248f96a54c02d013d848cac53b787",
+      "92bf745a006f02fe197e880f81d2d7c56e56f8d297a713a02b0fe5aef4e588e1",
+      "9667fe48e348f69cab1a2a32139e7692812d97c1c1c4a5248c4493e89344cd4e",
+      "97aec0bad5b30a733f068c2d008bc83850f415b28f1fc430b3c97400e2e36f82",
+      "99212bc232073cf30b4cfc0db21cba45da596406c554d55a3918f52c75d6c099",
+      "99e290da934482c232f1a53c95d07b31d29632608eaaf25a4328481908cc8b91",
+      "9a2d9abce6e6226d6103edb664bf0bda523fc80b7abb7e26573f2c63960a1c6f",
+      "9d88e6d0eb18df36bb0430e44bbc828e12b7e1422e10afeecf65e7d4aca2a192",
+      "9def24105fd541df46d49aaabb93fe48bd0984ffb3bde5e552aaada473ba7ec8",
+      "9ecb9776787f667aee5d118af4301a2bbac84b31ded15de7cfa3c51662113a3d",
+      "9eed728fca611857212e9b666ab697c88eda04bee5183fe13dde4eb9d992a475",
+      "9fe316a083b80c4f2db47ea7720f760fcf3489ae07de76c1c02a6543c064c435",
+      "a103c683d747e59a7f8e4b175ec6b7f984e564abdff379a16fe864c736a1c892",
+      "a2051d88640666a18951a8db1904ebe6b36f11e14e620f7bfe8017cd202aca0e",
+      "a26b5ba08ec795138ed1e797771b25acc0024b27a0213a198d38980d8e714efa",
+      "a3dfd446e8d365625e8217362744edccfc69664853cb92de4a9d80714cefd379",
+      "a3ee07fd61f782c6a68e03a53e4275149d9cede72e992a2e586cdd6622253dbb",
+      "a470562cc5a236ddf485ae6cfd0d28195092ed258aa77a06c8a135b245806ceb",
+      "a471d63bfa30b0d288dd0af97be40acd0d2080d2f0d174e1088ac76161b24823",
+      "a55750ea7385a5c636ef7900c49d44dede665ec54a7b96656bf001f02054a757",
+      "a5ec16c9e983225f33ecccde696c0248360497cd7f37d1edbf0e42d3d2abef8c",
+      "a625b144aeb8e7822f8064668db8240abdffcb9fad33cad6537ae8f93b30fefb",
+      "a7deaa32990ba265f4e3f1b4ddeec88cf38516056342f74ad3f975d67a71526f",
+      "aad4960d9796c660703b23593f2db96925105f2ec6d8612435762c86a2d09b56",
+      "ab0658682e7cf2d63d8b10c6864edd14f1507fc871949449498a99d1de6c3010",
+      "abe0fbecdc871bb853ff911c164d21c5b957708d74688d11d3e3f5748dfb8577",
+      "aec73c0fb5e23e67ca89ae0eb76410df5382a10865431077e3ef2187db2f2a5a",
+      "af2bf273451e36a9df01dd3497d6b55ff87137994c3c0fc09ae0387e4c8f9908",
+      "b09e8cd90d713ed3723502e84b7a43b8bc640219b5e869e0bbeacdb13c519cdd",
+      "b0e96fc180bc799632411d19df14dbfdec4a94153a3cc975b9e314e2bac8aaea",
+      "b40ef03dec713fc7ca0e5e64e4043f2d9fa95e42a0e806b9dc101a64ca9bf424",
+      "b5490c9cfc50d2688767120c8fa253fa47061cf38f0e2d5970da6fa92a27cd7f",
+      "b568d3d0083209f3d9a60546fef33a624c8b355462b39ff28055ac8377e4a26e",
+      "b5c846f47929b73514e23e8017639874b1a2f2c30e724c6401c08274e04187cd",
+      "b6fba8117d6c9ebe555420d7ca686c5a0d7e7fd3a2b4949cf39022f53743a661",
+      "b941d88d3af711efbfad5c63c82ac11334037d18025a7b4ec807f46d8172d18f",
+      "b98865be517708a2d7f8db40e0f68ec10f52fcb426c8424df66bfc5655223465",
+      "b9ba859c1ee4d1e61409187ce8af5443efb1a734a408518ee8d196d3c2d5e28f",
+      "b9bfc67c76c3fa97b5974be8975fdaccb26ebfacf6fbaa3fbc8dab224940dcdc",
+      "ba783c599e71b2c478ebebb6f9317ed47242847741ec2c609260be3446631b0e",
+      "bb99b1cf2afa2ff1e809842f9b6f212a1b894e47eb2c6e4360e7475d3b010b32",
+      "be247339534edce5f92e4fb59e598b5169024894892908b7e83c906a4eff87e3",
+      "be29921b7ad6b9cdc580a33dd6962f0d87e957b821e6d656862489630c10c3ae",
+      "be48db49860cd7ee50edb75e1642b47e9886be8170fbf20c3e2eb7d901719b12",
+      "c04cbbab3f72517dc645f1b93216beaab4a6baee586be552cad987fd25cf09a6",
+      "c056cbd426d7a87a72f0633e28f794ce0598c837627961563bda7d8df819d094",
+      "c05c2fc43be826314ee3b759f86f243e4dd5872a3c7a18a8d61f57ac3c3f385b",
+      "c1093a1ec0d02d0a49059007599a2adca3eb0fa78382b3f6de6537bfc8e9c322",
+      "c357ec126cca824421f10f044f68f1bc8a5945d3489cf042ef62f15e7e2e2b50",
+      "c42517a20fe27d42a626f906fb344938597b6866505b2fe9def0820c51177aa4",
+      "c43883347dea7e5cf5576ae9fde380ae99ec68cd8c3da737cdb01345e7bb7bb3",
+      "c47a831ecce1f06bc38d9ca88441bf5f27cd623d529d77290883beb4de7d8475",
+      "c4c6429d5c35d353942bfaeeefadee17159c8908b438a11fbb5efbd07897f29b",
+      "c5e561d7ba6d76b00016470291e1fdbdf18b28f29830003b052dbbd44aee84dd",
+      "c6b35bf1de6af265fd897c6658451e2de14bf3c8f6ca7cf54488187ca17ea090",
+      "c74acd2c0d1bf609beec4035da9567ec59559c2cbaf26671d9aafa073b9426da",
+      "c93e3b576e65e1055965817979f2d40cfdfdf29eeb4d55ac7e96727c5f113a97",
+      "cb49ef13174a94e74b8f259954370f1e4014d4315b4abf6774fb2102e6242ea5",
+      "cb9760e60b0e18c2d7af986021d2f755331348cb593233fe810496b87a3e0988",
+      "ce120c9fcb095222801a0cc9cd50598285870aaaa00e7958fd283103e79633e0",
+      "ce1db3397dcfd088625fc571096f56ca2679d8292ddac655dc069677ecdb65e8",
+      "cff3f2dd4c3636200a631cf59acd0d5286ee443b3ecbb32435052720663f05bc",
+      "d3672d1a0056bc52a89ae1c046226be2b1a6446ef7d86142f3c3d8f41a40dacf",
+      "d3d200716e88a6594647942a43e9a93f952d4103c246ced3aa2cee374af6d298",
+      "d468bca05713aea1dda00a3fcba91407efa4bdc7e76b59671742180bc88d99d1",
+      "d4ad8292f38c1f8ccdaeaabb6c52df30ba3ba7ccc1caa8b8d1f50d07de455951",
+      "d57570ef9591c4b12f6a32fc55f1a8551fccd6c1a6e4aa1053da99de8631998e",
+      "d66ab0a84207da1342f12861c29a0e4978ccbebbd742c52b1e8533023cdc3873",
+      "d6b6ade9054d2af5f2de6aa342b8bbc7ba2ca0f5a5b090080ce7fc7dd6b45c10",
+      "d6be1b159cefa0764bc27ef6c12a84baab73d331a962493cb11fd0be38183338",
+      "d729460dfa61f546ac6e73f068188495308c21d46f3f5c71dc5d203f147bf69a",
+      "d72c54a1fcd71fe34243026365b0f9eb68aff740d897745e7ff6a43253ed609a",
+      "d7ab1b43f4f87beaa48b4b9d4581d23366684e9829fe915c6fec37a35bee9dd0",
+      "dbdae4f78c22fdb127ba1768cd543983d1abd89a967b616d16ff18fe7a8358bf",
+      "dc6ee2299ab0fdfc80b773e17bb80a384a646fe84a0172d64cc5af97387247a5",
+      "de4d8754a8f70cf788ac95624749713fb897174290bd3d2a145f4e99dd3d4026",
+      "e07f9b777688bb774adf2b2ea338f6adcf73fa925a781aaaa84d86bca60d85fe",
+      "e257423c38f5bb7fc9cb1297862b2ccd77ed4ce1f561a6a2b232a4eed764d3a5",
+      "e4af4a3d473d220f447ed8d2904fa69d75ecbb99bbd67f9e2819b459179cd90e",
+      "e4db1dc637768a944d3be18544e89f895b876f3d1413ea36cbb566d102fe9a7a",
+      "e59f5fdd01daeace6ffa0b91babde97cb532e5c155b5c8e6fa2292ed5e3c696c",
+      "e5eb0537d76355ab2ed0a529847dc75654695e71e767dcff45ee4a06d9a2f1d0",
+      "e6262d4fcd8425c559503fe4f65d1edac58425cd1414661f2201c062f68c8c8b",
+      "e6c79e38ec258d57810106f24f20aec035263af46253bb17f40b903210258258",
+      "e77ad002c8d06e1a40bd5347272727d0e8d6b8e8789f31f7cd411997784aa2c6",
+      "e7f3f08ebdad9d77c2a7ed97bd5e49386707f76f28a3cb608279344e5f240776",
+      "e82c413f5f1eecf0440ce94d79c820165af8ed13a2b26a3d848ac8b549a2e3d8",
+      "e9bc57f7a71839fb4775156b4a73e102209bb874a9d4c53699dedefc7b4e3a81",
+      "ed3a58dc5756dc9c2865865436b69115344cd9794bfbacb5793267b3c57c12fa",
+      "ed99d8c075cb509e76f6425573f877e3a9f121d07bde16aea9a286fc499ab8b8",
+      "ef770214cba47104dee9497ba51f37d46f3eb2fde3c09e6ccaf20932828c83de",
+      "f38659fb8b3d083ab7c14b788ce928db0d7be499c1b7d4d5d51faa7fce5127c8",
+      "f4858d2591bd48f1f1d78740f50c214e561ecffe4aafa9e29bd9580459f2bb11",
+      "f4905fc85adb5c48de2b140110c2bd84d55a955b776a7ba832a7d4d1e51ec460",
+      "f4ddb2bdaf9b2ee0a6e92d5f1583dd60e28ac5c8adaac0a70327cf2330926522",
+      "f4e80263679452d2cf7c28a7498a00abf78c845baf35b7f3cd20a45887299a9b",
+      "f64d209654d94df5fbec51ae654f8129a5cc12c0df629d894e2fa32df8997a8e",
+      "f69737d8b4aa9836bbb3e20130f1666b44dd141ea9faa68f437b4845720b1c6d",
+      "f705ca3e5382b25e0aa1b4b8bc889ec9aa5cac302560a0741b66add35d99c4bd",
+      "f8b63ad2523c8698a06516a737cc2c580de3b05ebe459cf98d07673cb03bbfbb",
+      "f9c8070b9012208c824c4b3034d6f8bcc31f3354105152abbee1e667c4791d06",
+      "fa32d7f1fdd1ed59294d3dc6d3fa338ad8fa013c69d10040f238b5872de71c25",
+      "fc9b412019235a949a36f9391ba2e98df00979e9561b938901628390ca68a9d9",
+      "fd4d17270c0dbf4ba09ba847d6f1df56f29f65a9e03d424ff9c4607e8587d780",
+      "fdac0a89e415e10bb2d10e263ec84137d69e9741d5baeef4471a4947850a21dc",
+      "fe236ce1cf728d632f8441eefdd727d374f39e8afbbdadee886511ff21775d9e",
+      "fe9881cc168e7901865fd370a256683c96065f8bae704cf3d7ddcb9a336ba241",
+      "ffa32f83ba618a08d176f158fc6723f3c9a7a0245e268a488a2c9b038a943b2f"
+    ],
+    "note": "every cited hash was re-read through RawStore, which re-hashes the bytes; a failure here is a missing or altered payload",
+    "raw_hashes_manifest_count": 427,
+    "raw_store": "data/public/final-audit/raw",
+    "raw_store_available": true,
+    "release_source": {
+      "artifact": "data/public/final-audit/release_source.json",
+      "dataset_content_hash": "bfa14ecf7247dba20c35fe349496167aab28b63589e94902add92eccaf59c191",
+      "dataset_coverage_epoch": "original_bls_browser_captures",
+      "dataset_row_count": 10,
+      "kind": "sealed_release_dataset",
+      "note": "the release payload this card cites was copied into the audit's own raw store from the named archive, so the hash above re-reads out of this audit rather than out of the archive it came from",
+      "records_loaded": 10
+    },
+    "verified": [
+      {
+        "byte_count": 188,
+        "raw_hash": "bc1569f14b012c61f8421d594217314a00a46b25ece4fe88ce4756313594ece9"
+      },
+      {
+        "byte_count": 909703,
+        "raw_hash": "b9a4dbe820fbc57b9de8a13a16ca3fdc705edffcba81d7ab1b7a2a3b12cbefab"
+      },
+      {
+        "byte_count": 114621,
+        "raw_hash": "a6579853a5ffcba30722b1e00529eeade3c5f094c72972b2c5cfbb5fbcd727d3"
+      },
+      {
+        "byte_count": 1102086,
+        "raw_hash": "93b6d653831e774846eaa25adb23f21539b537636754e438da86da0f16c076bb"
+      },
+      {
+        "byte_count": 209094,
+        "raw_hash": "3b5f0c7c6641631da97c275f0904bac45ae653a0b5d89c4e633e41501ddf6c45"
+      },
+      {
+        "byte_count": 27,
+        "raw_hash": "50699ea1db13415ea46ec367dcfa58decd9660083271c5dc061561f38337fbac"
+      },
+      {
+        "byte_count": 83389,
+        "raw_hash": "37e47fb2ecb69679c97fd66a9973c3ddf7540e0f4ef93a5f6ed99e87fbeba1b5"
+      },
+      {
+        "byte_count": 33831,
+        "raw_hash": "b120c7d13a00e7cd6afd4681004a38bd02c672ce456d085a59468ca5877501cd"
+      },
+      {
+        "byte_count": 88020,
+        "raw_hash": "0efe257d6ea9b16f7d483eb985351ba87c095d0d97db1d45cbcb20af59ca0088"
+      },
+      {
+        "byte_count": 107929,
+        "raw_hash": "c2d97b0c461df09b2188dff727a1f262e03230ecd6b9506a603ed283c48e184f"
+      },
+      {
+        "byte_count": 108656,
+        "raw_hash": "c49a69617ddd61c7c172cc1686e299704d871d3a7d6fdbc9f8b8e5dcfa0cf6a9"
+      },
+      {
+        "byte_count": 52602,
+        "raw_hash": "736bf8b79ecf74f314294e5f836e09ca0353d279eb3e1919aa48c6d0b0d1521d"
+      },
+      {
+        "byte_count": 56988,
+        "raw_hash": "d3ed6e4c32992373ae3a39c661c901d4c1703038bb0b552515a55674aaaa85c1"
+      },
+      {
+        "byte_count": 53732,
+        "raw_hash": "438cc173532fbd0e21699854a643dc091c04f9e0d5cd3365572fc1ce0323542b"
+      },
+      {
+        "byte_count": 84949,
+        "raw_hash": "5d6bb54418965fa1e0fc752eb5371bad3d9f9adb4ff9281e8e24f58cc0006021"
+      },
+      {
+        "byte_count": 1541,
+        "raw_hash": "0e8a0335a4632a3292a4f5ccf3753cc0221fa6cb739cfcf6729a0404e0bd90fe"
+      },
+      {
+        "byte_count": 14295,
+        "raw_hash": "3e48d3b935a67dceeedc3d5d2bb7bc6caf36b980a2c8251a03b4fcff93b7a428"
+      },
+      {
+        "byte_count": 71791,
+        "raw_hash": "a98e2d7f6b4110bf50c06dabf298f3824bd6f6ddbccf5ef158e320ca25e3e020"
+      },
+      {
+        "byte_count": 3735,
+        "raw_hash": "82a38041cbab2171957ba01c8a2bd63b9c44148ac860b572aea903f71d71bd57"
+      },
+      {
+        "byte_count": 47811,
+        "raw_hash": "15c8592db5df577882aacf90da322a4578a37c591aacfdf362453b97988e0d69"
+      },
+      {
+        "byte_count": 1995,
+        "raw_hash": "2293257898b22adeeacb0b073962def8a1aa2e1b7c1254b8f0ca07988298a6d8"
+      },
+      {
+        "byte_count": 221578,
+        "raw_hash": "a85fbe169d3b37594bdcf0e7c12af03618c1eb4acc37f8d4484b4510cea3b8bb"
+      },
+      {
+        "byte_count": 8195,
+        "raw_hash": "2f4cc3eeaa3db5608282d7e15155573887bcca919e91f70d3b5c1c58ed68f7e0"
+      },
+      {
+        "byte_count": 13099,
+        "raw_hash": "6cfc7d0cca78bb2c396689c26bc591f5658f5c9bd0bd00fb83ddddceace12cd0"
+      },
+      {
+        "byte_count": 5011,
+        "raw_hash": "e4f645472b83875b9dd4ce9bc7d0cb5a11b4b7e8d1573460253ef647f0d6e7ac"
+      },
+      {
+        "byte_count": 63221,
+        "raw_hash": "3234bd826d7f830a6921ed348af9002cdd6ee1eeba2385c9c63f8c7837ecb6fc"
+      },
+      {
+        "byte_count": 197837,
+        "raw_hash": "4be551ecdcc3f7fc8f622fbdf3edc96472ecd9b8dd8e52a342c4815d1e6605ac"
+      },
+      {
+        "byte_count": 855259,
+        "raw_hash": "97f56e953332d0ced8111ea66935aef5d53ab4b7d3b893abcc6e388eae53cf1b"
+      },
+      {
+        "byte_count": 129944,
+        "raw_hash": "812e68d4c93dc584b9f5fdc5255dd491a7b448410b2ed78c217866dfe4de050a"
+      },
+      {
+        "byte_count": 25319,
+        "raw_hash": "f053ed8651912d91eaa0a1fed7e46d3f5ac3ac622502dfd8a4440bb666bcdd40"
+      },
+      {
+        "byte_count": 2248,
+        "raw_hash": "ac60792c7b3a28375663a9b37d03bfc9ab487eb2d3ba2dcffa4da92076cef079"
+      },
+      {
+        "byte_count": 8663,
+        "raw_hash": "a6c52c93753822a035606aa1310160c621246a18edf9f3c19b31fa4e3beb9dad"
+      },
+      {
+        "byte_count": 1156832,
+        "raw_hash": "d8a3e4f4284a94623daff61c14e034ca9c9fdacca774041ae276bbd2e935e5a6"
+      },
+      {
+        "byte_count": 149542,
+        "raw_hash": "284c1a3b7bc64d8a750e933b83f69827e08b5dfc952b2104e5fe98d0473b0f02"
+      },
+      {
+        "byte_count": 2853,
+        "raw_hash": "35abdce40bd79f21e10f93311472d2a164e9515ba64cbc1337248f1778561eff"
+      },
+      {
+        "byte_count": 14466,
+        "raw_hash": "9f0b8aaaf5627bc67ae0f2556c71cc2639d631aeda0d12383114a9a3611b2c8c"
+      },
+      {
+        "byte_count": 178369,
+        "raw_hash": "8ab3fee06f062b884fb6bb0a458f3b213197a3dfe20ce0153cc1e997900d244c"
+      },
+      {
+        "byte_count": 243896,
+        "raw_hash": "f6f026578b54cc572a2183642aacfdbf0d953b0b7f1ce045b61ea77269095472"
+      },
+      {
+        "byte_count": 9343,
+        "raw_hash": "2f3bb814f3459754ac526a49c06e8b5706bb4c1eae23d67607475fc95b6078d7"
+      },
+      {
+        "byte_count": 44544,
+        "raw_hash": "3b8f9f60752bbe5af668a5261563fa61654c06b3ff517ad7b431123d22fcbfdf"
+      },
+      {
+        "byte_count": 190134,
+        "raw_hash": "a64f31ee9f6be14fa206e77b9e40ebbca234e99c9e24e4f3dbc2b75927140443"
+      },
+      {
+        "byte_count": 125739,
+        "raw_hash": "b5dca0082ce60b5a760dccbe6ef018d7cff26dc5ae834b1a3d93b3b8d1ea10c5"
+      },
+      {
+        "byte_count": 5461,
+        "raw_hash": "ad05ff4eb2408f22403ffecacd7b85efc7265baaf44ce2ad27d592a6b2a1c7e7"
+      },
+      {
+        "byte_count": 226917,
+        "raw_hash": "085a36d15ef2d5a8e588f13e23e6599c0484771f462ab56f7774dbdbb6ca2e6b"
+      },
+      {
+        "byte_count": 8183,
+        "raw_hash": "d4b21f8654839e11d04cd9f193f33d42a6ebd1ee0d01290f1b4969891bdc2a48"
+      },
+      {
+        "byte_count": 5777,
+        "raw_hash": "74ae8dea95280b672468d060c7f6bfec3eae53fa30875cec6d4b3c7eaa2e682f"
+      },
+      {
+        "byte_count": 71833,
+        "raw_hash": "a2e9c4675223303afccc8c917513524373d71d3b927484047ee005d718783158"
+      },
+      {
+        "byte_count": 22097,
+        "raw_hash": "a6f3cc67d48eb226f80e65db41f9b5f3c2df5401719fe83812368480ef1c123d"
+      },
+      {
+        "byte_count": 175677,
+        "raw_hash": "b9beacd58429cf85f4b2439131340d3e644cd2f98e9c4236d107a7c03ec20b3f"
+      },
+      {
+        "byte_count": 146568,
+        "raw_hash": "6199d39f104234c57a6d04c4d41287bb18393c4b2fc17250133d0169d3a101a6"
+      },
+      {
+        "byte_count": 125530,
+        "raw_hash": "5323ec8e5885df2277e8db9ee389ebe6226b7b31c58dc79ef08528ee229d29bc"
+      },
+      {
+        "byte_count": 89018,
+        "raw_hash": "3e3cf7ee57504aece4116aba466e97c908bee42d61b1289242d3eb1c68ff89da"
+      },
+      {
+        "byte_count": 111223,
+        "raw_hash": "fc9a7d57332489e6417e70f71ac1d01f94c799d85d0a9eb53161c27d3b88f0a3"
+      },
+      {
+        "byte_count": 81252,
+        "raw_hash": "43030ca483e6cb3e8706bcdb39ed9ee206f6731fa0b29ba7e8902c4fed5885a1"
+      },
+      {
+        "byte_count": 216165,
+        "raw_hash": "f087804db9ade44279e13c7c0a0618a05ac9c9ea78bed60c2d4025853086f9f0"
+      },
+      {
+        "byte_count": 198276,
+        "raw_hash": "0c1adc383127e31e34df3ef8632073859f2927b464c7b1e71d2631c266549430"
+      },
+      {
+        "byte_count": 72797,
+        "raw_hash": "970c0b47a41790060ca760158939606d4cc579b46d53fb50f801ce0b9b623dac"
+      },
+      {
+        "byte_count": 22187,
+        "raw_hash": "81108bd752759292273118147945e0a4ea944f7f61864d32eb6613779564ba47"
+      },
+      {
+        "byte_count": 95997,
+        "raw_hash": "d095faca52dc55089396e4879b556685224cfc54565e6c75323bd4a6706bbd7f"
+      },
+      {
+        "byte_count": 22067,
+        "raw_hash": "217ef71ceb862c7d7bc6920a0f9c4c888c59a25188fc6893ad1db224eb7f3309"
+      },
+      {
+        "byte_count": 15802,
+        "raw_hash": "3c46899703fbedc22b835585e8356a0a693f8b323fe2bd4dc58a628e704f7a32"
+      },
+      {
+        "byte_count": 18836,
+        "raw_hash": "6a51f08991206bb94092c94a2a50e5cee4bb71b8dd4714ddbb654c8709e6b0ad"
+      },
+      {
+        "byte_count": 13342,
+        "raw_hash": "c58e60dc0b7935b0c743f2e326a8507c2c39fa58ca5b23dc730b54a3d057116e"
+      },
+      {
+        "byte_count": 8696,
+        "raw_hash": "71c3acb1058e2f09071ca2c9e8cf97bd1c4553a28f5109ba58e6f0353644a61e"
+      },
+      {
+        "byte_count": 96514,
+        "raw_hash": "89a248ee6371a2289ae658b2d882b4c6c45098fbca498b04eb6414280c219162"
+      },
+      {
+        "byte_count": 22037,
+        "raw_hash": "89035c8546c5880f9644ae6ed00838c4faea7b64fd9d637c52d489122134392c"
+      },
+      {
+        "byte_count": 23923,
+        "raw_hash": "d12b4473b1aadb7ff8acf04ea447a79cd775b65971924b6619bc089d16fba7cc"
+      },
+      {
+        "byte_count": 28820,
+        "raw_hash": "d8e64624f7bec33ad8ca0eda75ce8d9b4b17f49355e97b074d2344b83b770a81"
+      },
+      {
+        "byte_count": 3518,
+        "raw_hash": "6ebdf8726b590d8bc9385d2dd2ca01f7de9db2ea83c8170760a2503c2e8b6d6a"
+      },
+      {
+        "byte_count": 1625,
+        "raw_hash": "7a487b48c2b6c7c3d6eda6fce914d73278b6fc614fc0300cbafff577912de0f3"
+      },
+      {
+        "byte_count": 17160,
+        "raw_hash": "64b62c4cc5e961661558aed4c5ef93f88087ca9788af2cb41493154ff5b89898"
+      },
+      {
+        "byte_count": 8806,
+        "raw_hash": "caed96e98b569d47f592a9e730c65319d7ce63a8d1dcf7c196eba867c0c82ee7"
+      },
+      {
+        "byte_count": 1877,
+        "raw_hash": "698a8eb21f5f0100e1dc8eecfd0a688dc351c693bf7286f7e6f14cdc5cada3e7"
+      },
+      {
+        "byte_count": 212521,
+        "raw_hash": "6fe1f8d43dfaa7483aaff292d8f5bd9fea64754a84ce5b0db511e4c281fe02d7"
+      },
+      {
+        "byte_count": 62485,
+        "raw_hash": "e0d7da73984c8ad27be788a96013b6b2974372e8dfa173832d6e91df2e8e059b"
+      },
+      {
+        "byte_count": 14859,
+        "raw_hash": "ceaa141790c67453942c652b23da20902067902784f1962939e74e32fdbcc446"
+      },
+      {
+        "byte_count": 2340,
+        "raw_hash": "f5a19bbe37602d7fb8f5bdc5beaa7417ee85973e18d1ac44d1c76d930c0be56a"
+      },
+      {
+        "byte_count": 1967,
+        "raw_hash": "29f36274b93d699e400abf33c7e49add21e5f739eb8398877cb06cd63127bbfa"
+      },
+      {
+        "byte_count": 12876,
+        "raw_hash": "6b1d3eb4b0789f0bba2f62b8b7264ee4c9f63ca515a2caadd2c82eef4675ffd3"
+      },
+      {
+        "byte_count": 42646,
+        "raw_hash": "737790cad564b4446864b2c40f9865b41b694284f1edb57b06f7f3bd1290dae0"
+      },
+      {
+        "byte_count": 53333,
+        "raw_hash": "bbcd2ab17e0f073cce5accac3393d7a099a684e58981fb927890d887d9543697"
+      },
+      {
+        "byte_count": 85599,
+        "raw_hash": "7cd02f0be52b8943a991258a1a1281292bf709a2e7655b91434875fd73ce4fb7"
+      },
+      {
+        "byte_count": 3928,
+        "raw_hash": "451e3ede561730f497cd58c96d1b8e6ed74605d5efc2a5c65fcffdd05bd3fb87"
+      },
+      {
+        "byte_count": 813880,
+        "raw_hash": "c86c53a047a1224159d596c1629fc7da6d2f7e580dcd8db60c195cf91cb6fc4d"
+      },
+      {
+        "byte_count": 759635,
+        "raw_hash": "9eb603c29a20aad35e73645a007bf00f7c3f133f1e5438d8805ae2c5cf174882"
+      },
+      {
+        "byte_count": 16735,
+        "raw_hash": "a642799ba8479b5d739f9126932f83546e51a82ba14c4a4ce39a72757071086b"
+      },
+      {
+        "byte_count": 250749,
+        "raw_hash": "bacce002acd74d01e76d8f49028bf2556295fb856ecb2a98372aa11d164f7a4a"
+      },
+      {
+        "byte_count": 25166,
+        "raw_hash": "6cabcbcc017bc474d4647384c9b6fa248411a838ca569717efbb47b5049ff31f"
+      },
+      {
+        "byte_count": 246750,
+        "raw_hash": "470725478651e02081cff8fc9ada7a101734a2b60abea82327cfddeb818dd638"
+      },
+      {
+        "byte_count": 24663,
+        "raw_hash": "6e2da03ef350c5660f53dc3b6b839b3bfd48943d4f07197e329b7355e2fd6b79"
+      },
+      {
+        "byte_count": 71414,
+        "raw_hash": "c10449f1482147d0df27410cce7c905e0dbba84f9c9b20d06d37d3947d822fc8"
+      },
+      {
+        "byte_count": 3807,
+        "raw_hash": "ca27729f3740ccf4a2723c7e0e7983d96e3132da3fe41e069958efc5b4d45deb"
+      },
+      {
+        "byte_count": 232132,
+        "raw_hash": "6e32630d8295a0946ca799dddb70b4654c60d0072c04a84a16974afc0c59d087"
+      },
+      {
+        "byte_count": 17904,
+        "raw_hash": "c35e2df19a2722d5cc7440c40e85303f75e5851ec5bfefac4bbc478439e3ad72"
+      },
+      {
+        "byte_count": 50144,
+        "raw_hash": "8f1cd985f6614f5b65177f42487ff8b5c9374ffb0bbb070fa9f25fbd9c9cb95d"
+      },
+      {
+        "byte_count": 70814,
+        "raw_hash": "5a91362434b2e550e65075466c457d3d069f48efba313da3d7946979da195b79"
+      },
+      {
+        "byte_count": 136353,
+        "raw_hash": "cd4c3658b7ca5a4e5ff85ab6a2ff9a96f934b77f3b11c7171344a14e18e6d9eb"
+      },
+      {
+        "byte_count": 154005,
+        "raw_hash": "d2162fe15804d9b5b8e4544d0e0317806dcf88dd5b3f9e3dc777d699c050e8f4"
+      },
+      {
+        "byte_count": 3786,
+        "raw_hash": "864f332363b73268b538bec8661eeaff61e9663a6d07199a483e968108eb3f1c"
+      },
+      {
+        "byte_count": 20294,
+        "raw_hash": "518943a8d41ac68a23fbb198119ec90d8a1cbf6cfa300447768dca7216e6e20e"
+      },
+      {
+        "byte_count": 20354,
+        "raw_hash": "7f0ab728874aa71ac65a93066f6ac0533a13dd5a944598fd890e2a570c186308"
+      },
+      {
+        "byte_count": 19789,
+        "raw_hash": "95d065e967fcd9abdfb2504a4167289cf0fe5c29aff401fffe7dcd776444e6ea"
+      },
+      {
+        "byte_count": 19887,
+        "raw_hash": "fc5505c86a7856e2ea414d644e58457f230e84e22ec17789af29b593cebde430"
+      },
+      {
+        "byte_count": 19730,
+        "raw_hash": "0294d255085532695d09d4effa91e2fe5e782ca1d00081c26e80d9b39f3639fa"
+      },
+      {
+        "byte_count": 19738,
+        "raw_hash": "ca7d7ea52950cdd5c38df680bba201a8f0711ae5b292444b3f2dac90f93cdfb5"
+      },
+      {
+        "byte_count": 19745,
+        "raw_hash": "c8b09234727f2ce28542914da0be573baf64eb123b475fb49083b32dd5fef29c"
+      },
+      {
+        "byte_count": 19747,
+        "raw_hash": "6ed40920feb53797d6a5b053b70e5c2334458b021d2bb8c4988f93ee047cef2a"
+      },
+      {
+        "byte_count": 19747,
+        "raw_hash": "8c5aec1ba9822b3b5c1ca02e422d798a6d97dfec4c65f302ba29302d645ea063"
+      },
+      {
+        "byte_count": 19710,
+        "raw_hash": "991ae3c12130ce1b67f87c42a98a980d6fe8129b276fb24d51d2bb766f7abe3e"
+      },
+      {
+        "byte_count": 19725,
+        "raw_hash": "e413a4c22ad38c80865c30d37e88797d62ca5d547263fc4ffc3560d350ff5bf5"
+      },
+      {
+        "byte_count": 17556,
+        "raw_hash": "eebeacc1338ce91b0e67fa35aaadf36ad0deb860f150008a5b96bcdf21ff1a6e"
+      },
+      {
+        "byte_count": 18037,
+        "raw_hash": "2a059282d37ebe0a526c333e676eecb2d87007088249c524a603f87515df4b8f"
+      },
+      {
+        "byte_count": 16230,
+        "raw_hash": "55d5be49d15b2f0678da3a4be8543886afc4e33353bcf9c2f1b3e2cee489c413"
+      },
+      {
+        "byte_count": 14451,
+        "raw_hash": "b3296b55883a31bf164e8d75e9a39649bfcc99206bd1672c0989e96b40028c1d"
+      },
+      {
+        "byte_count": 12561,
+        "raw_hash": "1e828594bfb19c80ddf4361e47ad73452a1e2a0967f94e6ea3d5616be5d31c30"
+      },
+      {
+        "byte_count": 12584,
+        "raw_hash": "a11217909f91b7fdbf0b7f3fbcd2ba274d72e3f32fe3436930da9aa8c1bf5b1b"
+      },
+      {
+        "byte_count": 12544,
+        "raw_hash": "74b5348022afa2369366a02f9a996a1a589eb7e51547575acdd56ab8b44433a6"
+      },
+      {
+        "byte_count": 12582,
+        "raw_hash": "1e75a542f63526fdabbaab1ecd7695bda4de7f1b63ae34ae30f36e1b872017f8"
+      },
+      {
+        "byte_count": 12622,
+        "raw_hash": "2dddfaf962f02ac608ecb735c912251ed4789a820942c807c5addf1cc48a5365"
+      },
+      {
+        "byte_count": 27119,
+        "raw_hash": "1731e81c96e6fad4cee1ab11bb4dd4e2dded2a7bc21aa9302e3c8f5907c2181c"
+      },
+      {
+        "byte_count": 27133,
+        "raw_hash": "a9d1359ca4656e958dfff0b78c8493a72b039f119397cd9398e67ed2486ee760"
+      },
+      {
+        "byte_count": 27164,
+        "raw_hash": "426c1f9b8725fd54d2ead4c271af9da5070b6efe319a88d4c791b0c3e09f9642"
+      },
+      {
+        "byte_count": 26923,
+        "raw_hash": "b27ae84a990e78658c30df036bd5ad824697f80f1d27ac7fc6900a2f39bdc22e"
+      },
+      {
+        "byte_count": 26939,
+        "raw_hash": "36c9816c15e3003bd72c71ad6a276310eafd4d3ee7bbd4c25ea212e70a50e5af"
+      },
+      {
+        "byte_count": 26961,
+        "raw_hash": "4f07127775fab86933a311f4c77e5c7bd9bc15badfa067682635e82cacbb2d2e"
+      },
+      {
+        "byte_count": 26983,
+        "raw_hash": "a6357835712d1ac84e04e9961ed2acccedd2408cfb7762e02faa36c2ffba881b"
+      },
+      {
+        "byte_count": 27159,
+        "raw_hash": "6661a3b5a0655721c9e09a0946a73077fe50e9ce4e9f8582964734146822c8e0"
+      },
+      {
+        "byte_count": 32260,
+        "raw_hash": "9fc565876f8b01044cf88df2535a18a99d162f6948ed778fb4588447326cf1af"
+      },
+      {
+        "byte_count": 27195,
+        "raw_hash": "e00dd0964ccfca14093e97a885c6c7434ae165eccd35b3e8ab9e0d140b7d43fb"
+      },
+      {
+        "byte_count": 23895,
+        "raw_hash": "cf41bf1e966eb1b855bbcd016af750fc6366ab2454e70c14a4e11f52836e560a"
+      },
+      {
+        "byte_count": 18419,
+        "raw_hash": "314066dc663f5310d130fa9ad4a586b1019cc993b645a3f2698530e390e32d00"
+      },
+      {
+        "byte_count": 11861,
+        "raw_hash": "7c1060bbe2c0eefadf3822d64b9949833e2df0c030f7303972792d99fa3d5ded"
+      },
+      {
+        "byte_count": 6679,
+        "raw_hash": "fa405bf2539503d73df68ba4a28cc96d401ce675105cffa280a2569f581805dd"
+      },
+      {
+        "byte_count": 4995,
+        "raw_hash": "01c22c16c9ae4603e30859b0e2ea8edb8231d5d45b9694f1921e5fdd9a584cd1"
+      },
+      {
+        "byte_count": 1688,
+        "raw_hash": "984449f887ff96e8dd1555f3ca6eda5d8da40211d35d9c4c7eb26b8284ea2d50"
+      },
+      {
+        "byte_count": 1445,
+        "raw_hash": "dfce3fd153c998310923cdbf8f3a89a17db70d8e44da429a8795057c21ca93ec"
+      },
+      {
+        "byte_count": 1489,
+        "raw_hash": "a801bd0fedd3becc78d090236abe22759487ac69d3d337c5aa52b4f78ecb94bb"
+      },
+      {
+        "byte_count": 1488,
+        "raw_hash": "7dac6455eb5da35f828e8b7ffd48bd63e8f5b63e4c37fdd6a5258c28bdd24413"
+      },
+      {
+        "byte_count": 10096,
+        "raw_hash": "1c24cd843887643f8d60ab48aac416555309f4f8cc00c88e5c7db5f114673d69"
+      },
+      {
+        "byte_count": 10125,
+        "raw_hash": "6ff76592e73bd9f53ec92ac1bd9d1110b08ac8248c3b4daef2d57ebb655263bb"
+      },
+      {
+        "byte_count": 9881,
+        "raw_hash": "107154f253618f0b51e0f4c880eeae7a9aeef0c4e89f7e6b619cf2197e4ed86f"
+      },
+      {
+        "byte_count": 9899,
+        "raw_hash": "572c6384fcf3aff37e5c30cc953287c13a9b0ae052bb6ff98a39cbb81f5cac43"
+      },
+      {
+        "byte_count": 9864,
+        "raw_hash": "2321ea61ce071cd0f4db28d50145322ced6d6fd62d2cf161abe4edd51d74b3f5"
+      },
+      {
+        "byte_count": 9848,
+        "raw_hash": "5da7c176cb172526fdbd89e3629acea6ada09f55f25998cc24afcef66297b85a"
+      },
+      {
+        "byte_count": 9825,
+        "raw_hash": "79ee9b8eb387fbdac096df7a3afc8a81f992345410a1d9f9afa8ead39a999172"
+      },
+      {
+        "byte_count": 9793,
+        "raw_hash": "0d47f6dae3584943fd49d7d4d09092c0ba6739ddaad7bae0c3e4591a2ede3a4d"
+      },
+      {
+        "byte_count": 9362,
+        "raw_hash": "f99c1788c275da670f4fa716d33ccdd493d5300e2ae3c9e4011c74b20a08e8e9"
+      },
+      {
+        "byte_count": 9350,
+        "raw_hash": "700bed49189126bca8b3d2fa3b591aa8ad20d96e55744ab84ab375e751379259"
+      },
+      {
+        "byte_count": 9370,
+        "raw_hash": "4fa02ab31ecf5f19ad51419938bacac1e359332ab60ed6718aa35c16c7381073"
+      },
+      {
+        "byte_count": 9323,
+        "raw_hash": "84e1dfb162d1c79120f15881aec24b223a1792479b8b78cfa2a55618c1783307"
+      },
+      {
+        "byte_count": 9397,
+        "raw_hash": "b0adf0a512ce6ba7fa4ab852a00e52083fd3731ba36211a747d1f0aca7aa801d"
+      },
+      {
+        "byte_count": 9369,
+        "raw_hash": "a30a54e48acdf12cf2f0fd050f2e1c90860bd239dd2ef23671f7dfe185337cfb"
+      },
+      {
+        "byte_count": 9407,
+        "raw_hash": "d7a263ef0bd066ed524c4eb541568478999307a987692632326c2eef5a8494a5"
+      },
+      {
+        "byte_count": 8460,
+        "raw_hash": "a5c32a6c4f1474d68a77756df27032807cebd36214cd6081a22469f45af0e6c9"
+      },
+      {
+        "byte_count": 6771,
+        "raw_hash": "ff0bc3948cc0f837fe74595e911cf27fddac069e98bf3f7d06c767221b8db0f9"
+      },
+      {
+        "byte_count": 8466,
+        "raw_hash": "ab84cb04743ea1c5bb4186a837876c057e1ab74ba88d48ee4edd3c7682f36d2a"
+      },
+      {
+        "byte_count": 8498,
+        "raw_hash": "3da77489652fe148f997c4e8cdca73daf134dbe2db0cb0ec488c4dbc73f04867"
+      },
+      {
+        "byte_count": 8486,
+        "raw_hash": "e363173011aa445c2134923283cd9498b8e918a028a399cac3a92c7c9866c339"
+      },
+      {
+        "byte_count": 8477,
+        "raw_hash": "3c599574e8efc505c86f831d4b720003276d4f55b669775a6bdc0ad836f28d43"
+      },
+      {
+        "byte_count": 8476,
+        "raw_hash": "0bb557ac0169cb27070eb7d46e1243dac82498b735fa719829ed7bb53ed78336"
+      },
+      {
+        "byte_count": 8482,
+        "raw_hash": "00c2f7ff20b16c8de9750307f5eb5f9c6caaf699a70070dcfedceda6cb4fc6c4"
+      },
+      {
+        "byte_count": 8451,
+        "raw_hash": "234447f08f85e157467cab5a63a9a708ed05f8f08b7f363ac7d1d88be7190612"
+      },
+      {
+        "byte_count": 8468,
+        "raw_hash": "a00b4c56702458b0581f92ca912cced8d7e907f200c75d335b0092ba70529ece"
+      },
+      {
+        "byte_count": 10185,
+        "raw_hash": "ee623b39da1ec0836d5861edc3cdc972a180876352d4ab771ba37981f70bf67f"
+      },
+      {
+        "byte_count": 357,
+        "raw_hash": "28e3163e92123a6cea7660281264e34fe0b52d1403d02bcb639e1f8a7bf7100b"
+      },
+      {
+        "byte_count": 669,
+        "raw_hash": "c9cc8f8fef6ff15f62b9d40bbe0551e3496586e4bd3d02fa51dd0db728834fe2"
+      },
+      {
+        "byte_count": 358,
+        "raw_hash": "034a79cc371ea1f41e1909c07c6ce43ee50bbe4eaf961c8e0fb0112d38d1db31"
+      },
+      {
+        "byte_count": 663,
+        "raw_hash": "52e698831b8de56949638319c1bf9f98d695a64180cb99270536aa1e955e10d3"
+      },
+      {
+        "byte_count": 357,
+        "raw_hash": "cfcc7665b48cac33a60423e4062d1c7dd10fc1d38d338625b9fab411ccb6fe94"
+      },
+      {
+        "byte_count": 669,
+        "raw_hash": "6c9c4ab59cc7b78c3077cbb0119449c19a75cca94f5ff10222769313af64e0c4"
+      },
+      {
+        "byte_count": 357,
+        "raw_hash": "068d7f895f6e36ab7d91842cc7831b1b02122482fc7ced7dacb45d14998516e7"
+      },
+      {
+        "byte_count": 981,
+        "raw_hash": "2344c3bbc36191047366b493eb5618df52a18318a0753b330e27842f4c817d7e"
+      },
+      {
+        "byte_count": 357,
+        "raw_hash": "a24bb7a20f4a78637b449a3596f3b2a7c537037818638660262bdd25dbe35881"
+      },
+      {
+        "byte_count": 669,
+        "raw_hash": "501b5a598bebcad890a1535b91cdb733b5639214c0935fa56d09abfd6bf3b3fd"
+      },
+      {
+        "byte_count": 358,
+        "raw_hash": "48c4bd10b3c8b3cbf338c7a910af85b522cfc015d25a89ae741b822c4f6f7a9a"
+      },
+      {
+        "byte_count": 984,
+        "raw_hash": "80c6bd5ec7522de3577997b0a1530e7cddb44d4d09b5ad64db658c5a3fef9c23"
+      },
+      {
+        "byte_count": 359,
+        "raw_hash": "5976058a5c15b1ad8dbbf2983057e71414a499e75d54e72f6e7f546b13cbc1ba"
+      },
+      {
+        "byte_count": 1323,
+        "raw_hash": "ec9a2e86b4f43069b8a9a1fab6ccfc890defa29229eff2a9668681d92b7b9f7d"
+      },
+      {
+        "byte_count": 358,
+        "raw_hash": "013e17a65170c7da44a559390bd983b2017413533ef11fbf9b791105c8224054"
+      },
+      {
+        "byte_count": 984,
+        "raw_hash": "525791fa18b6636404616a3694d260f146a23003d127306bc4d27ca11d478a93"
+      },
+      {
+        "byte_count": 358,
+        "raw_hash": "e832680bda3fe0a0afc5d02b457b5929ac326ecccf19917d112ab47e992e89c8"
+      },
+      {
+        "byte_count": 984,
+        "raw_hash": "ecb3c6f66db3155c0b957d2463da5b425dc9370d2dc54962ea7557d36f80a4d4"
+      },
+      {
+        "byte_count": 351,
+        "raw_hash": "b2a2db3e5d53fad591ebc0c61329061e27e249edf6ee7de85aa587a171a514b5"
+      },
+      {
+        "byte_count": 657,
+        "raw_hash": "bcb8b1da70c7180c728a5f27a202d3cb1359c2212e4b384e1fd0b50c5ddabdb6"
+      },
+      {
+        "byte_count": 25,
+        "raw_hash": "ce91679332b1b83d2574366e4cc72f6d41bf656ccc2fa9cf574ee4f9ac6809e7"
+      },
+      {
+        "byte_count": 606,
+        "raw_hash": "1a12644cd4885c3690c765f951d4e5f6047893866c14156d0dc285ff32e311fa"
+      },
+      {
+        "byte_count": 1369796,
+        "raw_hash": "6e90f322584a8e8e776433678ff20e96ca1eb4f3545ecbfb067b9408a92e5abc"
+      }
+    ],
+    "verified_hash_count": 187
+  },
+  "family": "cpi",
+  "first_release": {
+    "absent_reason": null,
+    "access_failures": [],
+    "embargo_is_not_observed_publication": true,
+    "embargo_time_from_payload": "2025-01-15T13:30:00+00:00",
+    "gate_detail": "the archived initial release payload was retrieved and parsed",
+    "gate_satisfied": true,
+    "observed_publication_at": null,
+    "observed_publication_unavailable_reason": "the payload was fetched after the event, so reading it cannot establish when the material first became public",
+    "raw_hash": "6e90f322584a8e8e776433678ff20e96ca1eb4f3545ecbfb067b9408a92e5abc",
+    "retrieved": true,
+    "revisions": {},
+    "revisions_kept_separate": true,
+    "schedule_agreement": "agrees_with_calendar",
+    "source": {
+      "acquisition_method": "sealed_release_dataset",
+      "archived_raw_hash": "6e90f322584a8e8e776433678ff20e96ca1eb4f3545ecbfb067b9408a92e5abc",
+      "dataset": {
+        "content_hash": "bfa14ecf7247dba20c35fe349496167aab28b63589e94902add92eccaf59c191",
+        "coverage_epoch": "original_bls_browser_captures",
+        "path": "data/public/bls-normalized/releases.parquet",
+        "raw_root": "data/public/bls-normalized/raw",
+        "row_count": 10,
+        "schema_version": "1",
+        "table": "releases"
+      },
+      "dataset_artifact": "data/public/final-audit/release_source.json",
+      "explicitly_selected": true,
+      "fallback_to_network_used": false,
+      "input_dataset_hash": "bfa14ecf7247dba20c35fe349496167aab28b63589e94902add92eccaf59c191",
+      "kind": "sealed_release_dataset",
+      "network_release_requests_issued": false,
+      "not_evidence_of": [
+        "the market rule version in force at this release",
+        "the quote coverage of any contract at this release"
+      ],
+      "provenance_note": "these first-release values were read from the named sealed dataset and verified against the original archived bytes it cites; the failed network path an earlier audit recorded is a separate record and does not describe this payload",
+      "values_verified_against_original_bytes": true
+    },
+    "values": {
+      "cpi_core_nsa_yoy_pct": "3.2",
+      "cpi_core_sa_mom_pct": "0.2",
+      "cpi_headline_nsa_yoy_pct": "2.9",
+      "cpi_headline_sa_mom_pct": "0.4",
+      "cpi_u_nsa_index_level": "315.605",
+      "cpi_u_nsa_yoy_pct": "2.9"
+    },
+    "values_are_first_release": true
+  },
+  "gate": "G0",
+  "operation": "event_card",
+  "outputs": {
+    "card": "reports/event_card.json"
+  },
+  "reference_period": "2024-12",
+  "scheduled_at": "2025-01-15T13:30:00+00:00",
+  "source_artifacts": {
+    "coverage": "data/public/final-audit/coverage.json",
+    "event_card": "data/public/final-audit/event_card.json",
+    "raw_hashes": "data/public/final-audit/raw_hashes.json",
+    "release_source": "data/public/final-audit/release_source.json",
+    "series_discovery": "data/public/final-audit/series_discovery.json"
+  },
+  "source_urls": {
+    "calendar_url": "https://www.bls.gov/schedule/2025/01_sched_list.htm",
+    "initial_release_url": "https://www.bls.gov/news.release/archives/cpi_01152025.htm"
+  },
+  "status": "created",
+  "unsatisfied_gates": [
+    "candidate_selection_unbounded",
+    "candle_series_on_grid_without_interior_holes",
+    "candle_series_spans_requested_window"
+  ],
+  "window_basis": "the measurement window recorded by the audit run, read from the study's event-window configuration",
+  "window_end": "2025-01-15T14:30:00+00:00",
+  "window_start": "2025-01-15T13:00:00+00:00"
+}

@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+data/
+.audit/
+.DS_Store
+.omp
+
+# Runtime output. `configs/scheduled-reports.cron` writes both of these: it appends job
+# transcripts to `logs/` and generated JSON reports to `reports/generated/`. Neither is
+# a report source. The committed report sources stay directly under `reports/`.
+logs/
+reports/generated/
+
+# Captured rule text, and the records attested from it, are acquired data rather than
+# repository sources: the capture root holds bytes fetched from a public venue.
+rules/
+

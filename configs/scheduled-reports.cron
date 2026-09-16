@@ -1,0 +1,162 @@
+# Scheduled report jobs for the market-propagation study.
+#
+# This file is a configuration artifact. Nothing in this repository installs it,
+# and no job below runs until you add its entries through `crontab -e`.
+# Merge them with existing jobs rather than replacing your whole crontab.
+# No scheduler, cron entry, timer or service is deployed by this project.
+#
+# The two report entries are configured for this checkout. Review the absolute
+# paths before installing them elsewhere. The capture template at the bottom is
+# deliberately disabled.
+#
+# Before you install it:
+#
+# 1. Review the absolute checkout and uv paths in the Configuration block.
+#    Cron starts a job in the home directory, so a relative checkout path would
+#    resolve there rather than in this repository.
+#
+# 2. Confirm that MARKET_PROPAGATION_UV resolves to the uv binary. Run
+#    `command -v uv` to find it. Cron runs with a minimal environment and often
+#    has no uv on PATH, which is why the entries below call uv by absolute path.
+#
+# 3. Confirm that the virtual environment is already synced, with
+#    `uv sync --extra dev --frozen`. These entries pass `--frozen`, so uv uses the
+#    committed lock as-is and never re-resolves or rewrites it. Pass `--no-sync`
+#    instead if you want a scheduled run to leave the environment untouched.
+#
+# 4. Confirm that MARKET_PROPAGATION_RAW_STORE names a raw store that exists.
+#    `audit` and `capture` create one. `quality` fails on a store that was never
+#    written, and reports an empty store as empty rather than as clean.
+#
+# 5. Confirm that MARKET_PROPAGATION_REGISTRY names a registry a run already
+#    wrote. `reproduce` writes `experiment_registry.sqlite3` into its own output
+#    directory. `registry-review` never creates a registry, so a path that does
+#    not exist exits 1.
+#
+# Exit codes. 0 is a complete result, 1 is an invalid argument or a technical
+# failure, and 2 is a successful computation of a blocked or absent result. An
+# alert policy should treat 2 as "inspect the artifacts written under the output
+# path", not as a crashed job. These entries pass the command's own status
+# through to cron.
+#
+# Format notes. Cron reads one physical line per entry, so no entry below may be
+# continued with a backslash. An unescaped `%` in a command line is read as a
+# newline, so `date +%F` is written `date +\%F`.
+#
+# The `NAME=value` lines below are crontab environment assignments, which
+# Vixie-style cron, including the version shipped with most Linux and macOS
+# distributions, passes to the job's shell. Confirm this on the cron you use. If
+# your cron ignores assignment lines, inline the absolute paths directly into each
+# command instead of relying on the variables.
+
+# --- Configuration ----------------------------------------------------------
+
+# Absolute path to this checkout.
+MARKET_PROPAGATION_ROOT=/Users/moses/orca/projects/information-diffusion
+
+# Absolute path to the uv binary, from `command -v uv`.
+MARKET_PROPAGATION_UV=/Users/moses/.local/bin/uv
+
+# Raw store the daily quality report reads. Absolute, or relative to
+# MARKET_PROPAGATION_ROOT, because every entry changes directory first.
+MARKET_PROPAGATION_RAW_STORE=data/public/final-audit/raw
+
+# Registry the weekly review reads. Reproduce writes it into the output
+# directory you gave that run, so this path must match that directory.
+MARKET_PROPAGATION_REGISTRY=data/synthetic/final/experiment_registry.sqlite3
+
+# Cron supplies a minimal PATH. Widen it rather than relying on the caller's
+# shell profile, which cron does not read.
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# --- Daily collector-quality report ----------------------------------------
+#
+# Re-reads every receipt in the raw store and verifies each referenced payload
+# against its content hash. Writes its own JSON report under reports/generated/
+# and appends a transcript to logs/quality.log. That directory holds generated
+# output only; it is not packaged, and the committed report sources stay in
+# reports/. This report reads a local store and depends on no release calendar,
+# so the host clock is the right clock for it and no timezone conversion applies.
+#
+# 06:17 host time, every day.
+17 6 * * * cd "$MARKET_PROPAGATION_ROOT" && mkdir -p logs reports/generated && "$MARKET_PROPAGATION_UV" run --frozen market-propagation quality "$MARKET_PROPAGATION_RAW_STORE" --output "reports/generated/quality-$(date +\%F).json" >> logs/quality.log 2>&1
+
+# --- Weekly experiment-registry review --------------------------------------
+#
+# Prints the durable runs, locked-test reservations and event claims one
+# registry holds, and writes the JSON to reports/generated/. The command has no
+# --output option, so stdout is redirected instead. Appends stderr to
+# logs/registry-review.log.
+#
+# 06:23 host time every Monday. Cron weekday 1 is Monday.
+23 6 * * 1 cd "$MARKET_PROPAGATION_ROOT" && mkdir -p logs reports/generated && "$MARKET_PROPAGATION_UV" run --frozen market-propagation registry-review "$MARKET_PROPAGATION_REGISTRY" > "reports/generated/registry-review-$(date +\%F).json" 2>> logs/registry-review.log
+
+# --- Daily live rule-text capture ------------------------------------------
+#
+# A capture is admissible only for windows beginning at or after the instant the
+# serving system states it answered at, so the observation has to be taken ahead
+# of the window it is used on and is re-taken on a cadence rather than once.
+# Writes one JSON summary under rules/captures/ and appends a transcript to
+# logs/rules-capture.log. rules/ is git-ignored: it holds bytes fetched from a
+# public venue rather than repository sources. Exit 0 means every declared series
+# was read to its last page and at least one capture was written; 2 means a page
+# was blocked or nothing was captured.
+#
+# 06:41 host time, every day. The raw listing carries its own instant, so the host
+# clock dates the run rather than the evidence and no timezone conversion applies.
+41 6 * * * cd "$MARKET_PROPAGATION_ROOT" && mkdir -p logs rules/captures && "$MARKET_PROPAGATION_UV" run --frozen market-propagation capture-rules --output rules/captures/latest-capture.json >> logs/rules-capture.log 2>&1
+
+# --- Release-window capture template, NOT enabled ---------------------------
+#
+# Nothing below is active. The entries above stay active when you uncomment a
+# line here only if that line moves into the active section, so edit this block
+# as a whole. Enable it only after you have done all three steps.
+#
+# Step 1. Choose the market identity. `--contract` takes a real public market
+# identity that a person verified, never a guessed ticker. configs/cohort.yaml
+# records the venue series the study prespecifies under the
+# observed_venue_series keys of candidate_contract_families. Set the variable to
+# the identity you verified, then let the entry read it.
+#
+#   MARKET_PROPAGATION_CONTRACT_ID=<VERIFIED_PUBLIC_MARKET_ID>
+#
+# An unknown identifier is recorded as an access failure and the command exits 2,
+# so a wrong value produces a blocked run rather than an empty capture. The
+# command refuses to run at all when the identifier is missing.
+#
+# Step 2. Fix the schedule against the release calendar, not against a fixed
+# clock time. BLS releases publish at 08:30 America/New_York. A plain
+# `25 8 * * *` entry fires at 08:25 host time, which equals 08:25 Eastern only
+# while the host runs on Eastern time. It is an hour out on the far side of a
+# daylight-saving transition. The study cohort spans exactly such a transition,
+# so no fixed offset is correct for all of its releases.
+#
+# Pick one of these, and confirm that your platform supports the one you pick.
+#
+#   a. A timezone-aware scheduler. A systemd timer accepts a timezone in
+#      OnCalendar, for example `OnCalendar=*-*-* 08:25 America/New_York`. A
+#      Vixie-style cron accepts a CRON_TZ variable. Verify the behaviour of the
+#      cron on your own platform before relying on CRON_TZ. Setting TZ in this
+#      file changes the environment of the job and does not change when cron
+#      fires it.
+#
+#   b. Per-release entries converted outside this file. Read scheduled_at_utc
+#      from configs/cohort.yaml, which the study already converted through the
+#      IANA timezone database, convert that instant to the host clock yourself,
+#      and write one dated entry per release. Do not hardcode -05:00 or -04:00.
+#      configs/event_windows.yaml sets fixed_utc_offset_allowed to false and
+#      names IANA_timezone_database as the offset conversion rule.
+#
+# Either way the conversion is external to this repository. No command here
+# reads a release calendar to decide when to start.
+#
+# Step 3. Bound the run. The example is a 10-minute window polled every 5
+# seconds. `--duration` is capped at 3600 seconds, `--interval` has a floor of
+# 0.1 seconds, and one run issues at most 1800 requests. capture writes
+# data/public/capture, which is git-ignored and never packaged.
+#
+# Example entry. Edit the day field, the time field and the variable, then move
+# the line into the active section above.
+#
+# MARKET_PROPAGATION_CONTRACT_ID=<VERIFIED_PUBLIC_MARKET_ID>
+# 25 8 * * * cd "$MARKET_PROPAGATION_ROOT" && mkdir -p logs && "$MARKET_PROPAGATION_UV" run --frozen market-propagation capture --output data/public/capture --venue kalshi --contract "$MARKET_PROPAGATION_CONTRACT_ID" --duration 600 --interval 5 --timeout 8 >> logs/capture.log 2>&1

@@ -1,0 +1,114 @@
+config_version: perp_arbitrage_v1
+# Declarations for the perpetual-futures arbitrage study's data acquisition.
+# Nothing here is a result. The study's estimands are declared separately; this
+# file fixes what is collected, how often, and what is refused.
+
+source:
+  name: PerpDexList
+  base_url: https://perpdexlist.com
+  # Content negotiation is used deliberately: the source serves text/markdown,
+  # so parsing targets pipe tables and avoids HTML escaping rules entirely.
+  accept: text/markdown
+  # Every page carries a `Data generated at` stamp, but sections are rebuilt at
+  # slightly different instants (see cadence.build_stamp_canaries for the measured
+  # skew). The stamp, not our clock, names an observation, so a sweep is valid
+  # once per build per asset class and a re-run inside a build writes nothing.
+  observation_time: source_build_stamp
+  local_receive_time_recorded: true
+  # A blocked or unshaped page is a recorded refusal, never an empty success.
+  transport: market_propagation.ingest.transport.HttpTransport
+  raw_archive: true
+
+endpoints:
+  universe: /markets
+  market: /markets/{asset_class}/{asset}
+  funding_history: /markets/{asset_class}/{asset}/funding
+
+# The study needs a cross-venue cross-section and its persistence. The source
+# publishes rolling windows only, so collection must begin before the analysis:
+# no historical order-book or per-episode series is retrievable after the fact.
+cadence:
+  priority_hourly_minutes: 60
+  full_sweep_hours: 24
+  # One index request per check. When the build stamp has not advanced the sweep
+  # is skipped without fetching any asset page, so polling cannot become a crawl.
+  # NOTE: the index page /markets carries no stamp at all; asset pages carry one
+  # and share it across the build, so one asset page dates the whole build. This
+  # canary is read first and is the only request an unchanged build costs.
+  # The source stamps every page with a `Data generated at` instant, but it does
+  # NOT rebuild all sections at the same moment: measured on two builds, the rwa
+  # pages carried 10:30:26Z and 11:36:11Z while the crypto pages carried
+  # 10:30:34Z and 11:36:19Z, an 8-second skew that repeated across both builds.
+  # Within one asset class every page shares one stamp, so one asset page dates
+  # its whole class, but a single canary cannot date the site. One canary is
+  # therefore read per declared asset class, and the sweep is skipped only when
+  # every class's stamp is unchanged. A one-canary check would skip a sweep in
+  # which only the slower class had advanced, lapsing that class by a build.
+  # The index page /markets carries no stamp at all.
+  build_stamp_canaries:
+    crypto: /markets/crypto/BTC
+    rwa: /markets/rwa/XAU
+  # Kept for callers that read the old single-canary key; the per-class mapping
+  # above takes precedence.
+  build_stamp_canary: /markets/crypto/BTC
+  skip_when_build_unchanged: true
+  # Observed build cadence: the stamp advanced 09:29:18Z -> 10:30:34Z and then
+  # 10:30:34Z -> 11:36:19Z on the crypto pages, so hourly polling matches the
+  # source's own rebuild period.
+  observed_build_cadence_minutes: 61
+
+politeness:
+  min_interval_seconds: 0.25
+  timeout_seconds: 30.0
+  max_attempts: 4
+  initial_backoff_seconds: 1.0
+  max_backoff_seconds: 30.0
+
+universe:
+  # Which assets the priority sweep covers. `source_ranking` reads the source's
+  # own "Most traded assets" list rather than freezing a list here, so the
+  # priority set tracks liquidity instead of the day this file was written.
+  priority_source: source_ranking
+  priority_limit: 40
+  include_asset_classes:
+    - crypto
+    - rwa
+
+funding_interval:
+  # The interval is not printed. It is derived two independent ways and both
+  # must agree; see market_propagation.perp.parse.resolve_interval.
+  derivations:
+    - annualised_rate_over_per_settlement_rate
+    - settled_count_over_window
+  documented_schedules_hours: [1, 4, 8]
+  on_disagreement: refuse
+  refusal_code: funding_interval_derivations_disagree
+
+refusals:
+  # An unobserved figure is a null with a named code. It is never zero, and it
+  # is never imputed, because a venue the source did not look at is not a venue
+  # that traded nothing.
+  unobserved_marker: em_dash
+  codes:
+    - source_reported_no_figure
+    - figure_not_parseable
+    - funding_interval_not_derivable
+    - funding_interval_derivations_disagree
+    - page_carried_no_build_stamp
+    - execution_cost_not_observable_from_this_source
+    - funding_apr_missing_on_one_side
+    - price_missing_on_one_side
+
+claim_limits:
+  # A gross quoted funding spread is not an arbitrage. The source's own
+  # execution-cost page ships an empty client-rendered shell, so the fee and
+  # slippage layer cannot be observed from these pages. Every differential
+  # therefore carries execution_cost_not_observable_from_this_source and no
+  # quoted spread may be promoted to an executable opportunity on this data.
+  quoted_spread_is_not_arbitrage: true
+  execution_cost_layer_observable: false
+  capacity_estimable: false
+  # No per-episode series exists, so opportunity duration cannot be measured
+  # from this source; it requires the collector's own build-to-build series.
+  opportunity_persistence_estimable_from_source: false
+  opportunity_persistence_estimable_from_collector: true

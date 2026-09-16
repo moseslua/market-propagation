@@ -1,0 +1,122 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "market-propagation"
+version = "0.1.0"
+description = "Point-in-time measurement of information propagation across prediction markets"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Information Diffusion Study" }]
+keywords = ["prediction-markets", "point-in-time", "event-study", "macro-releases"]
+classifiers = [
+  "Private :: Do Not Upload",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+  "numpy>=2.4",
+  "scipy>=1.17",
+  "pandas>=3.0",
+  "pyarrow>=25.0",
+  "duckdb>=1.5",
+  "httpx>=0.28",
+  "PyYAML>=6.0",
+  "matplotlib>=3.11",
+  "websockets>=17.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0",
+  "ruff>=0.16",
+]
+
+[project.scripts]
+market-propagation = "market_propagation.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/market_propagation"]
+
+[tool.hatch.build.targets.sdist]
+# This list is an allowlist: only the paths named here ship, so acquired data,
+# audit scratch and generated run artifacts stay out even where they are not
+# already excluded. `data/` and `.audit/` are git-ignored, and the build backend
+# reads `.gitignore` as an exclusion source, so acquired payloads and audit
+# scratch stay out even against a path named below.
+#
+# `uv.lock` ships because it is the dependency lock a rebuild resolves against,
+# and because the reproduction records its absolute path and hash as provenance.
+#
+# The `reports/` files are named individually rather than by directory.
+# `configs/study_v1.yaml` names `reports/preregistration.md` as the preregistration
+# path, and the reporting module resolves that path against the repository root, so
+# that file has to ship for a packaged specification to resolve its own reference.
+# `reports/data_audit.md`, `reports/data_card.md` and `reports/paper.md` are the
+# static evidence documents this repository commits, and a rebuild reads them
+# alongside `reports/reproduction_guide.md`. Listing files instead of the directory
+# means a report a later command writes into `reports/` cannot ship by sitting next
+# to committed sources. Scheduled runs and the guide write their JSON under
+# `reports/generated/`, and no generated file is named here.
+#
+# Generated artifacts are deliberately absent from this list: the JSON, SQLite,
+# Parquet, PNG and JSONL files a run writes are outputs, not sources. The acquired
+# raw data stays local and is not redistributed here, and no redistribution or
+# license for it is assumed. Keeping the allowlist explicit means a run's own output
+# cannot ship by sitting next to a committed source.
+#
+# `scripts/` ships because `scripts/import_bls_archives.py` is the only producer of
+# the normalized release dataset that `reports/reproduction_guide.md` documents.
+# `configs/` carries the frozen specification, the cohort, the event windows, the
+# endpoint contract and the scheduled-report configuration. `tests/` ships so a
+# source rebuild can run the suite it ships.
+#
+# README.md and pyproject.toml are listed for completeness; `project.readme` and
+# the project file itself are force-included by the build backend either way. The
+# packaged fixture needs no entry of its own: it lives under
+# `src/market_propagation/fixtures/`, which the package tree below already covers
+# for both the wheel and the sdist.
+include = [
+  "src/market_propagation",
+  "configs",
+  "scripts",
+  "tests",
+  "reports/preregistration.md",
+  "reports/literature_matrix.csv",
+  "reports/contract_rule_registry.json",
+  "reports/reproduction_guide.md",
+  "reports/data_audit.md",
+  "reports/data_card.md",
+  "reports/paper.md",
+  "README.md",
+  "pyproject.toml",
+  "uv.lock",
+]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error::DeprecationWarning:market_propagation.*"]
+markers = [
+  "network: test reaches a public read-only endpoint (deselect with '-m \"not network\"')",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["market_propagation"]

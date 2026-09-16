@@ -1,0 +1,274 @@
+# Cross-venue contract matching, v1.
+#
+# This file declares what makes two venues' contracts the same claim, and what the
+# programme will accept as a match. It records a decision the earlier pipeline left
+# implicit: `reports/contract_rule_registry.json` already states that
+# `all_required_fields_must_match` is true, `similar_titles_sufficient` is false and
+# `title_text_is_a_lead_only` is true. This file is where those rules are declared in
+# the form the matching layer reads them, so a grade can be checked against a
+# declaration rather than against the pairs the layer happened to be handed.
+#
+# Nothing here is a result. The counts live in the registry a run writes, and an
+# empty EXACT set on the current inputs states that no supplied pair graded EXACT
+# rather than that none exists.
+
+config_version: matching_v1
+scope: >-
+  The predicate components a cross-venue pair must agree on, the grades a pair may
+  receive with the reasons each carries, and the single grade the primary analysis
+  may be fed from.
+
+components:
+  # Every component of a parsed payout predicate, in the order the layer compares and
+  # reports them. A component list rather than a field list because a predicate is
+  # read from a venue's own payout text and each of these is one thing that text
+  # states; the configuration cannot add a component the parser does not derive.
+  all:
+    - underlying_event
+    - reference_period
+    - threshold
+    - operator
+    - settlement_criterion
+    - reference_horizon
+  # The components a pair must agree on before it is a pair at all. A pair that
+  # mismatches on any of these is REJECT, not APPROXIMATE: these are the components
+  # that decide which figure pays, when it is measured, on what basis it settles and
+  # which decision it resolves on. A configuration may require more than the four the
+  # programme requires and never fewer, because dropping one widens the gate the run
+  # reports itself as applying.
+  required_for_agreement:
+    - underlying_event
+    - reference_period
+    - settlement_criterion
+    - reference_horizon
+  # Threshold and operator are deliberately not required. They are compared and
+  # reported, and a difference on either grades the pair APPROXIMATE with the reason
+  # named, so the neighbouring strike on one meeting is never admitted as a match.
+  # The measured payout grain is what makes that refusal safe rather than pedantic:
+  # on the archived policy series every readable level strike is a multiple of 0.25
+  # percent and every stated rate change a multiple of 25 basis points, so a
+  # threshold difference between two contracts on one event is a different claim.
+  optional_for_agreement:
+    - threshold
+    - operator
+  # An unobserved component refuses a pair whichever list it is in. Two records that
+  # publish nothing cannot be shown to agree, and this repository has already had to
+  # remove a placeholder string from a matching field for exactly that reason.
+  unobserved_component_is_a_refusal: true
+
+# The venues this layer compares, and where each one's payout text is.
+#
+# `payout_text_fields` names the columns the venue's own record states its payout in.
+# `parser` names the grammar that reads them, and this layer never reads one venue's
+# text through another venue's grammar.
+#
+# The Polymarket declaration is the measured state of the inputs rather than a
+# placeholder: the cleaned local layer's verified column list carries `market_slug`
+# and market metadata, and it carries no settlement-rule text column. No parser for a
+# slug exists in this repository, and inferring a predicate from a slug is the title
+# similarity this layer exists to refuse. Every cross-venue pair on the current
+# inputs is therefore REJECT with `one_side_states_no_readable_payoff_predicate`, and
+# a second-venue reading can be added by declaring a parser for the vocabulary that
+# venue's record actually states, never by reading its slug here.
+venues:
+  - id: kalshi
+    label: Kalshi public market records
+    payout_text_fields:
+      - yes_sub_title
+      - title
+    parser: declared_policy_predicate_forms
+    # The archived policy text was read from fetched responses and the forms the
+    # parser accepts are listed in `predicates.readable_forms` of
+    # configs/neighbor_graph_v2.yaml.
+    documentation_verified: true
+    remote_status: reachable_without_credentials
+  - id: polymarket
+    label: Polymarket cleaned local trade layer
+    payout_text_fields:
+      - market_slug
+    parser: none_declared_in_this_repository
+    # Nothing about this record was fetched. `ingest/polymarket_public.py` documents
+    # that every documented host timed out in this environment, and the field names
+    # it lists are marked `documentation_verified=False` for that reason.
+    documentation_verified: false
+    remote_status: unreachable_in_this_environment
+
+threshold_units:
+  # The scale carrying each declared unit onto the canonical unit, which is percent.
+  # Basis points are exact: 25bps and 0.25 percent are one level and not two, and the
+  # parser states which of the two definitions a contract resolves on, so a
+  # conversion can never move a contract between settlement subjects.
+  percent: "1"
+  basis_points: "0.01"
+
+settlement_criteria:
+  # What a payout may be computed from. The basis is the payout rule the venue's text
+  # declares; the vintage is which publication of the underlying figure settles it.
+  basis:
+    - cash_settlement_at_the_listed_payout
+  # The publication vintages a criterion may resolve on. They are declared separately
+  # because this project has already measured that the vintage matters: the
+  # expectation validator refuses a forecast scored against a revision, and the
+  # release reader keeps disclosed revisions out of the first-print values.
+  vintages:
+    - first_release
+    - revised_figure
+  # A pair whose two sides name the same basis on different vintages is refused by
+  # name, because a settlement difference is not a rounding difference.
+  revision_vintage_mismatch_is_a_named_refusal: true
+
+grades:
+  # The grade the primary analysis reads, and the only one it may be fed from.
+  - grade: EXACT
+    definition: >-
+      Every component of both predicates agrees on the value its own record states:
+      the same economic variable and yes-side axis, the same reference period, the
+      same threshold in the same unit, the same comparison direction, the same
+      settlement basis on the same publication vintage, and the same decision date
+      resolved through the declared calendar.
+    certifies_the_same_payoff: true
+    admits_into_primary_analysis: true
+    requires:
+      - every_component_agrees
+  - grade: ECONOMICALLY_EQUIVALENT
+    definition: >-
+      Every component agrees except that the threshold is stated in a different
+      declared unit, and the declared scales carry both statements onto the same
+      canonical level. The payoff set is identical and only the representation
+      differs, which is why this is a separate grade rather than EXACT: a reader
+      has to see that a unit conversion was applied rather than infer it.
+    certifies_the_same_payoff: true
+    admits_into_primary_analysis: false
+    requires:
+      - no_component_differs
+      - threshold_is_equivalent_under_a_declared_unit_conversion
+  - grade: APPROXIMATE
+    definition: >-
+      Every required component agrees, but the threshold or the comparison
+      direction differs, so the two contracts are the same economic event at a
+      different boundary. It is a reported near-miss and never a match: the
+      neighbouring strike is the most correlated contract on a venue, which is the
+      substitution this gate exists to refuse.
+    certifies_the_same_payoff: false
+    admits_into_primary_analysis: false
+    requires:
+      - a_differing_component_on_a_component_not_required_for_agreement
+  - grade: REJECT
+    definition: >-
+      A required component differs, or a component neither record publishes cannot
+      be shown to agree, or one side's payout text states no readable predicate at
+      all. The pair keeps its place in the registry with the specific reasons, so a
+      refusal is a recorded null rather than a dropped row.
+    certifies_the_same_payoff: false
+    admits_into_primary_analysis: false
+    requires:
+      - a_required_component_differs_or_a_component_is_unobserved_or_a_side_is_unreadable
+
+# Which grades feed the primary analysis. The programme's rule is that the primary
+# analysis uses EXACT only, so a run's headline match set is the pairs whose
+# predicates agree on every stated value. ECONOMICALLY_EQUIVALENT is a certified
+# equivalent payoff and is still kept out, because its admission is a separate
+# decision that has not been taken; raising it means editing this list and the
+# preregistration that names it, not editing a grade definition.
+primary_analysis:
+  grades:
+    - EXACT
+  # A near-miss is never substituted for a match by any fallback, and a pair refused
+  # for a settlement-vintage difference is not recoverable by widening a tolerance.
+  substitute_approximate_for_exact: false
+  match_quality_is_reported_per_pair: true
+  counts_denominator: candidate_pairs_formed_from_the_supplied_venue_records
+
+# What a matched pair still has to satisfy before it is a *verified* match. A
+# predicate-identical pair and a verified identical pair are different claims, and the
+# exposure graph already refuses an edge whose rule vintage is not verified.
+rule_vintage:
+  requirement_declared_in: configs/neighbor_graph_v2.yaml
+  applies_to_matches: verified_matches_only
+  unverified_pair_grade: unchanged
+  unverified_pair_reason: rule_vintage_unverified
+  note: >-
+    The grade states that the two records state the same predicate. Whether each
+    record's rule text was attested as in force across the measured window is answered
+    by the graph's own rule-vintage requirement and reported separately, because a
+    grade that folded the two together would let an unverified pair read as a verified
+    match.
+
+# The reasons a grade is *assigned*, as opposed to the refusals below. They are
+# declared here so a reader of a registry can resolve every code it carries against
+# this file: a grade reason is a statement about what was established, and a refusal
+# is a statement about what could not be.
+grade_reasons:
+  - code: every_component_agrees_on_the_stated_value
+    grade: EXACT
+    meaning: each component of both predicates holds the value its own record states
+  - code: threshold_denotes_the_same_quantity_in_a_declared_unit
+    grade: ECONOMICALLY_EQUIVALENT
+    meaning: the two strikes differ only in the declared unit they are stated in
+
+refusals:
+  # The refusals this layer can record, in the precedence order it applies them. Each
+  # names one distinct fact, so a blocked run reports which one applied instead of one
+  # undifferentiated rejection.
+  - code: one_side_states_no_readable_payoff_predicate
+    meaning: a side's record states no payout any declared parser can read
+  - code: settlement_revision_vintage_differs
+    meaning: same settlement basis, different publication vintage, refused by name
+  - code: settlement_criterion_differs
+    meaning: the two sides settle on different payout criteria
+  - code: underlying_economic_event_differs
+    meaning: the two sides resolve on different economic variables or yes-side axes
+  - code: reference_period_differs
+    meaning: the two sides cover different reference periods
+  - code: reference_horizon_differs
+    meaning: the two sides resolve on different decision instants
+  - code: required_component_is_unobserved_on_both_records
+    meaning: a component at least one record does not publish cannot be shown to agree
+  - code: threshold_differs
+    meaning: different strikes, which on the measured grain is a different claim
+  - code: comparison_operator_differs
+    meaning: different comparison directions
+  - code: venue_payout_text_has_no_parser_declared_in_this_repository
+    meaning: the venue's record states no payout, and no parser is declared for it
+  - code: record_does_not_publish_a_required_predicate_field
+    meaning: the record omits a column the declared parser reads
+  - code: published_contract_text_states_no_readable_payout
+    meaning: reuses the predicate parser's own code so one unreadable contract has one name
+  - code: contract_title_states_no_readable_settlement_subject
+    meaning: reuses the predicate parser's own code
+  - code: contract_month_is_not_dated_by_the_declared_calendar
+    meaning: reuses the predicate parser's own code
+  # Deliberately absent: a title- or slug-similarity code. No similarity score is
+  # computed, so no refusal can be expressed in terms of one.
+
+similarity_measures_declared: []
+
+# Which records enter the candidate universe before any grading happens.
+#
+# This block decides the denominator, and it is the one place a text pattern is
+# allowed to appear at all. It is a *selection* rule and never evidence: a record it
+# excludes is outside the candidate universe rather than refused for resembling
+# something, and no grade or refusal above is expressed in terms of it. The layer
+# still computes no similarity score, which `similarity_measures_declared: []` states.
+#
+# The counts a run writes always carry the totals this selection started from, so a
+# match count can never be read as though the whole layer had been searched.
+candidate_selection:
+  first_venue:
+    # Membership is decided by the cohort's own declared series list, matched through
+    # `series_of` rather than by substring, because a `LIKE 'FED-%'` test drops the
+    # sibling `FEDDECISION` series.
+    source: data/external/kalshi-trades/markets-*.parquet
+    series_declared_in: configs/cohort_v2.yaml
+    selects_by: declared_series_membership
+  second_venue:
+    # The cleaned local layer's own identity column. Its record states no payout text,
+    # so every read below the selection is a named refusal.
+    source: data/external/polymarket-v1/daily_aligned_multi/*.parquet
+    contract_identity_column: market_slug
+    # A selection pattern, not a match rule: it narrows which records are considered
+    # candidates for the declared policy family. Widening or replacing it changes the
+    # denominator and is recorded with every run.
+    slug_pattern: "(fed|fomc).*(rate|rates|decision|cut|hike|change)|(rate|rates).*(fed|fomc)"
+    max_candidates: 250
+    on_more_available_than_the_cap: report_the_total_available_beside_the_count_supplied

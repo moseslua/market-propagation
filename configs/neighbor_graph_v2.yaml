@@ -1,0 +1,174 @@
+# Neighbour exposure graph, v2 freeze.
+#
+# This file declares the exposure axis the propagation rung is built on. It
+# records decisions the earlier pipeline left implicit, so a graph decision can be
+# checked against a declaration rather than against the contracts it happened to
+# be handed.
+#
+# Nothing here is a result. The `calibration` block records what the decision rule's
+# calibration measured on a synthetic process; it is not evidence about this graph
+# over the archive. The graph stays unestimable while no candidate contract carries
+# an attested rule vintage.
+
+config_version: neighbor_graph_v2
+scope: >-
+  The declared decision calendar, the payout-predicate rules and the rule-vintage
+  requirement that together define an admissible donor->receiver exposure edge.
+
+graph:
+  # The topology rules. The version travels beside the digest rather than inside it.
+  version: neighbor_graph_v2
+  # Only an economic-exposure edge is built. A payoff identity (two contracts whose
+  # yes sides are complements in one payout space) and a mechanical dependence (the
+  # mutually exclusive strikes of one meeting) are named relations that this graph
+  # does not build, so no consumer can read one as the other.
+  relations_built:
+    - economic_exposure
+  relations_declared_not_built:
+    - payoff_identity
+    - mechanical_dependence
+  # Predicates are comparable only when every one of these agrees. Venue, contract
+  # id and series name are deliberately absent: ticker resemblance is not
+  # settlement semantics.
+  match_fields:
+    - rate_definition
+    - threshold
+    - inequality
+    - yes_axis
+    - orientation
+
+# The declared decision calendar. This is the exposure axis: an edge runs from the
+# meeting immediately preceding a receiver's to the receiver's own. Kalshi's own
+# expiry codes name a month only, so which meeting that month's contract is about
+# is a fact about the Federal Reserve's published schedule and is declared here
+# instead of being inferred from a ticker.
+#
+# `basis` states what these dates are. They are the published FOMC meeting dates
+# for 2024-2027, declared before the graph was built, read from
+# https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm on 2026-09-16.
+# They are not attestations of any contract's rule text, and a contract's own
+# listing window is not evidence that it carried the rule version this study needs.
+#
+# The horizon reaches past this study's observation instants because a rule capture
+# bounds only windows that begin at or after the instant the serving system states
+# it answered at; a calendar that stopped at 2025 would leave every captured record
+# unable to certify anything.
+decision_calendar:
+  basis: declared_fomc_meeting_dates
+  verified_from_a_fetched_source: false
+  dates:
+    - "2024-11-07"
+    - "2024-12-18"
+    - "2025-01-29"
+    - "2025-03-19"
+    - "2025-05-07"
+    - "2025-06-18"
+    - "2025-07-30"
+    - "2025-09-17"
+    - "2025-10-29"
+    - "2025-12-10"
+    - "2026-01-28"
+    - "2026-03-18"
+    - "2026-04-29"
+    - "2026-06-17"
+    - "2026-07-29"
+    - "2026-09-16"
+    - "2026-10-28"
+    - "2026-12-09"
+    - "2027-01-27"
+    - "2027-03-17"
+    - "2027-04-28"
+    - "2027-06-09"
+    - "2027-07-28"
+    - "2027-09-15"
+    - "2027-10-27"
+    - "2027-12-08"
+
+predicates:
+  # The rate each stated settlement subject resolves on. A contract about the
+  # target range and a contract about the realized rate are different claims and
+  # are never each other's donor, even when their numbers coincide.
+  rate_definitions:
+    - upper_bound_federal_funds_target_rate
+    - federal_funds_rate
+    - target_rate_change_bps
+  # The published payout forms this project can read. A contract whose archived
+  # text states none of them yields no predicate and is refused rather than
+  # defaulted to a threshold of zero.
+  readable_forms:
+    - "Above <rate>%"
+    - "<rate>% or below"
+    - "Cut <n>bps"
+    - "Cut ><n>bps"
+    - "Hike <n>bps"
+    - "Hike ><n>bps"
+    - "Hike 0bps"
+    - "Fed maintains rate"
+    - "No change"
+  # The archived columns the predicate is read from, in the order it is read.
+  text_columns:
+    - yes_sub_title
+    - title
+
+rule_vintage:
+  # A rule hash binds a verdict to exact text; only the interval can certify a
+  # window. An edge therefore needs a verified record that names the contract, the
+  # digest of the rule text, the source it was read from, the method that verified
+  # it, and the instants that bound which version was in force.
+  required_record_fields:
+    - contract_id
+    - rule_hash
+    - source_url
+    - verified_by
+    - in_force_from
+    - in_force_to
+    - observed_at
+    - settlement_semantics
+  # The configured source of those records. `reports/contract_rule_registry.json`
+  # is a specification document and carries no per-contract rule record, so on the
+  # current checkout this requirement is unmet for every contract and the graph
+  # refuses every edge with `rule_vintage_unverified`. That refusal is the finding.
+  evidence_source: reports/contract_rule_registry.json
+  evidence_source_records_rule_versions: false
+  # A contract's own listing window is not a rule-vintage bound, and neither a
+  # catalogue settlement-source name nor a settlement outcome is admitted as one.
+  recorded_open_time_is_not_a_rule_bound: true
+
+windows:
+  # The measured window an edge has to hold across. Both contracts must be listed
+  # at the forecast origin and still listed at its end, and both must carry a
+  # verified rule version in force across the whole interval.
+  lag_guard_seconds: 60
+  future_horizon_seconds: 300
+  # An edge is never borrowed from the response panel's own pre/post windows: those
+  # size a response measurement rather than an eligibility interval.
+  reuse_response_window: false
+
+calibration:
+  # The graph-and-observation calibration has run: simulated transaction tapes passed
+  # through the same graph, observation, feature, fitting, tuning, paired-uncertainty
+  # and promotion code as real data, with simultaneous null bounds. Measured rates,
+  # the certificate and the registry record live in `configs/study_v2.yaml` under
+  # `calibration`, which is the authority; this block records the verdict.
+  status: measured
+  verdict: inconclusive
+  verdict_is_constrained_by: >-
+    two of the ten declared null scenarios emit no shock or no valid window by
+    construction, so no comparison row is ever complete for them and their
+    false-positive rates are not estimable. The family bound therefore cannot be
+    certified for the declaration as written. The eight estimable nulls promoted in
+    0 of 200 repetitions each.
+  certificate: data/calibration/calibration_certificate.json
+  registry: data/registry/rule_calibration.sqlite3
+  required_repetitions_per_primary_scenario: 200
+  requires_transaction_tapes: true
+  requires_simultaneous_null_bounds: true
+  superseded_run:
+    call: network_falsification
+    n_events: 10
+    repetitions: 48
+    seed: 20260915
+    why_insufficient: >-
+      it counts a gain-threshold event on the quote/simulator path rather than the
+      transaction observation process this study declares, and 48 repetitions
+      cannot separate a 0.05 ceiling from a 0.80 target on either side.

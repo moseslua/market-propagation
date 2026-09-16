@@ -1,0 +1,241 @@
+# Rule capture and attestation, v1.
+#
+# The propagation programme is blocked on one input: a per-contract record stating
+# which version of a contract's rule text was in force over an interval. Everything
+# else the graph needs is measured; `reports/study_execution_status.md` records the
+# gate as `rule_vintage_unverified` for 785 of 785 receiver-side decisions because
+# `reports/contract_rule_registry.json` is a specification document that carries no
+# per-contract rule record.
+#
+# This file declares what evidence is allowed to produce one. It is a decision
+# surface rather than a result: no capture, receipt or interval is recorded here,
+# and nothing in this file states that any contract's vintage has been attested.
+#
+# The consumer is `market_propagation.ingest.audit.RuleVersionEvidence`, whose
+# `applies_to()` is the in-force test the graph asks. `record.required_record_fields`
+# below is checked against that class's own fields when this file is loaded, so a
+# record produced under this configuration cannot drift from the record consumed.
+
+config_version: rule_attestation_v1
+
+scope: >-
+  Capture of public rule text with its exact bytes and digest, attestation of a
+  per-contract in-force interval from a dated source that actually bounds one, and a
+  per-contract verification report that states refusals by reason.
+
+capture:
+  # Everything captured lands under this root, and nothing captured is written into
+  # the repository's tracked or packaged sources: `rules/` holds bytes fetched from a
+  # public source, which is acquired data rather than the sources this repository
+  # ships. The packaging allowlist in `pyproject.toml` names files individually and
+  # does not name this root, and an operator running a capture must also keep it out
+  # of version control. The flag below is asserted at load time rather than trusted.
+  root: rules
+  # Raw bytes are content-addressed here by the repository's existing archive, the
+  # same `RawStore` the ingest transport already writes into. This pipeline
+  # deliberately adds no HTTP client of its own: it reads through
+  # `market_propagation.ingest.transport.HttpTransport`, which is GET-only, archives
+  # every body before any parser sees it, bounds its retries and records a blocked
+  # endpoint as a blocked status rather than as an empty success.
+  raw_subdirectory: raw
+  # One immutable JSON record per capture, under `captures/<contract_id>/`. A capture
+  # is never rewritten: the same contract captured at the same recorded instant from
+  # the same URL cannot have two different bodies, and the write refuses rather than
+  # overwriting. Two genuinely distinct fetches are two records even when their bytes
+  # are identical, because they are two occurrences.
+  index_subdirectory: captures
+  reads_through: market_propagation.ingest.transport.HttpTransport
+  archives_with: market_propagation.storage.RawStore
+  digests: sha256_of_the_exact_archived_bytes
+  stores_raw_text: true
+  writes_captured_data_into_the_repository: false
+
+record:
+  # The record this pipeline produces is the record the graph consumes. The field list
+  # is the study's own requirement, taken from
+  # `configs/neighbor_graph_v2.yaml` block `rule_vintage.required_record_fields`, and
+  # it is verified against the consumer's dataclass fields at load time.
+  produced_type: market_propagation.ingest.audit.RuleVersionEvidence
+  produced_by: market_propagation.ingest.rule_attestation
+  required_record_fields:
+    - contract_id
+    - rule_hash
+    - source_url
+    - verified_by
+    - in_force_from
+    - in_force_to
+    - observed_at
+    - settlement_semantics
+  # `in_force_to: null` states that the version was still in force at its last
+  # confirming dated observation. It is not a synonym for "forever", and an interval
+  # with an open end is written as open in the report.
+  open_interval_semantics: in_force_to_null_means_still_in_force_at_the_last_confirmation
+  # `rule_hash` is the sha256 of the exact archived bytes the version was read from,
+  # so re-reading text that changed stops being certified instead of inheriting an
+  # earlier verdict. A bare rule-text digest and a whole-document digest bind the same
+  # way: what the field certifies is the bytes, and the bytes are archived.
+  rule_hash_binds: sha256_of_the_archived_bytes_the_rule_version_was_read_from
+
+dated_sources:
+  # A bound may only be read from a source whose own dating bounds when the text was
+  # in force. `bound_basis` states where in such a source the bound is read from.
+  #
+  # `stated_effective_interval`: the document states the interval itself (an effective
+  # date, a revision date, a supersession date).
+  #
+  # `observation_instant`: the document is a dated observation of the live rule page,
+  # rule page, so the text it contains is certified live at the instant it was taken. That bounds
+  # only the single instant, so an interval needs at least one further observation; a
+  # run of observations of one text closes when a later observation shows different
+  # text. A lone observation closes nothing: the record is written from that instant with an
+  # open end (`in_force_to: null`), and the current time is never a bound. Refusing to
+  # extend the interval to now is the rule; refusing the record is not.
+  admissible:
+    - id: archived_snapshot_of_the_rule_text
+      bound_basis: observation_instant
+      must_name_the_contract: true
+      why: >-
+        a third-party archive holds the page as it stood at a recorded instant, so the
+        rule text in the capture was live then. Coverage for the declared contracts was
+        measured at zero (0 of 155 candidates carry a capture), so this route is
+        admissible and empty rather than inadmissible: the absence is a coverage
+        finding, not a defect in the evidence standard.
+      admissible_when: >-
+        the archived bytes carry the contract's rule text and the capture names the
+        contract it was taken for. A series-level rules page covering many contracts
+        cannot bound one of them, and a client-rendered page shell with no contract
+        text in it is a capture that carries no rule text and attests nothing.
+    - id: regulatory_self_certification_filing
+      bound_basis: stated_effective_interval
+      must_name_the_contract: true
+      why: >-
+        a Regulation 40.2(a) notification is dated, free and authoritative, and it
+        carries the actual terms rather than marketing text. It is filed per product
+        template: the filing read in full (ptc09022529868.pdf, dated 2025-09-02) names
+        no strike, event or individual market, and the Fed-decision product family was
+        certified long before the 2025 windows, so its filing date cannot bound a
+        version in force inside them. The category stays admissible only for a filing
+        that itself names the contract, and one that does not is refused by name.
+      admissible_when: >-
+        the filing itself names the contract. Measured since this entry was first
+        written: the venue publishes its own copy of every filing at
+        `assets.kalshi.com/regulatory/product-certifications/<SERIES>.pdf`, reachable
+        from `GET /trade-api/v2/series/<TICKER>`, so a filing is easier to locate than
+        the CFTC portal path suggests. Reading the `FED` copy shows why naming the
+        contract is the whole test rather than a formality: it is a product-template
+        document dated 2021-06-30 and effective 2021-07-02, it names no strike, and the
+        live Terms and Conditions at `assets.kalshi.com/contract_terms/FED.pdf` now
+        differs from it in issuance cadence, last trading date, position terms and
+        expiration time while stating no effective date of its own. A template whose
+        text changed without recording when cannot bound a contract-level window, so
+        the naming requirement carries the whole weight and is not relaxed here.
+    - id: venue_rule_change_notice
+      bound_basis: stated_effective_interval
+      must_name_the_contract: true
+      why: >-
+        a notice that states when a contract's terms change, and the change it states,
+        is a dated source that bounds the interval on its own terms. No such notice and
+        no enumerable index of one was reachable for the declared contracts, and one
+        that does not name the contract is refused by name rather than accepted as a
+        product-level statement.
+    - id: dated_observation_of_the_live_rule_text
+      bound_basis: observation_instant
+      must_name_the_contract: true
+      why: >-
+        the capture is a dated observation of the venue's own live listing, taken
+        before the window it is used to certify, so the rule text it carries was live
+        at the instant the serving system states. It is not the refused
+        `current_venue_rule_text`: that kind is a read taken after the window and
+        offered as evidence about its own past, and this kind cannot be used that way
+        even by mistake, because the consumer's `applies_to()` refuses every instant
+        earlier than `in_force_from` and every instant at or after `in_force_to`.
+      admissible_when: >-
+        the archived bytes carry the contract's own `ticker` in the same object as its
+        payout text, and the record names the settlement criterion it was read from. A
+        capture whose response states no instant stays admissible and unattested: no
+        bound is imputed from this run's clock.
+  inadmissible:
+    - id: current_venue_rule_text
+      why: >-
+        the venue's historical endpoint returns a contract's rule text as it stands
+        now. The text is readable and the predicate in it is recoverable, and a page
+        read in 2026 still cannot establish which version a 2025 contract carried over
+        a 2025 window: the endpoint exposes no revision history, and the venue rewrites
+        settled records months after the fact. Current rule text is therefore not
+        evidence of its own past version.
+  # Stated as a declaration so a reader of this file does not have to infer it from the
+  # categories above.
+  venue_rule_text_cannot_attest_its_own_past_version: true
+
+interval_construction:
+  # How an in-force interval is read from admissible captures, so the rule is checkable
+  # rather than implicit in the code.
+  stated_interval: >-
+    read from the document's own stated effective dates. Two admissible documents that
+    state different intervals are refused: the choice between them would not be
+    derivable from this configuration.
+  observation_interval: >-
+    the run of consecutive observations carrying one text digest is certified over
+    [first observation, first later observation of a different digest). Both bounds are
+    instants the sources record, never instants this run fetched. The closure is an
+    observation, never a wall clock, and the assumption is stated: no unobserved
+    version change falls strictly between two consecutive observations.
+  interval_is_half_open: true
+  empty_or_reversed_interval: refused_by_name_never_clamped
+  unclosed_run: >-
+    an interval whose end is not observed is written with an open end rather than
+    closed at the time of the run: an unobserved version change is not asserted to
+    have happened, and the current time is not a bound. The record then certifies the
+    version from its first dated observation onward, and its `observed_at` dates the
+    last confirming observation rather than the end of any interval.
+
+# The method named in the produced record's `verified_by` field, keyed by the
+# `bound_basis` it was read under. The method is derived from the route the interval
+# came from rather than written by the attester, so a record cannot claim a stronger
+# method than the route it was built by.
+verification_methods:
+  stated_effective_interval: stated_effective_interval_read_from_a_dated_source_naming_the_contract
+  observation_instant: dated_observations_of_one_archived_rule_text_sha256_digest
+
+# Fields a caller may offer as an interval bound, with the reason each is refused. Every
+# one of these is refused by its own name, so a report states which inadmissible bound
+# was offered instead of silently ignoring it. An offered field that this list does not
+# declare is refused as an undeclared field rather than interpreted.
+refused_fields:
+  - field: open_time
+    reason: recorded_open_time_is_not_a_rule_bound
+    why: >-
+      the archive's `open_time` is the instant the *previous* meeting resolved rather
+      than a listing instant, which is why an earlier version of this study concluded
+      wrongly that Kalshi lists one decision date at a time. It dates the venue's own
+      bookkeeping, not the rule text a later fetch returned.
+  - field: close_time
+    reason: recorded_close_time_is_not_a_rule_bound
+    why: >-
+      `close_time` is when the contract stopped trading. It is a lifecycle fact about
+      the market and says nothing about when a version of its rule text took effect.
+  - field: created_time
+    reason: recorded_created_time_is_not_a_rule_bound
+    why: >-
+      `created_time` is when the venue created the market record. A rule version can
+      predate or postdate the record by an unknown amount, so the record's own creation
+      cannot bound the text's interval.
+  - field: updated_time
+    reason: recorded_updated_time_is_not_a_rule_bound
+    why: >-
+      `updated_time` is a rewrite stamp and the venue does rewrite settled records: all
+      eleven `FED-25MAY` markets closed 2025-05-07 and carry `updated_time`
+      2026-02-19T08:48:16Z, roughly nine and a half months later, with no revision
+      history exposed. It dates the most recent rewrite rather than any version.
+  - field: settlement_ts
+    reason: recorded_settlement_time_is_not_a_rule_bound
+    why: >-
+      `settlement_ts` dates the payout. A settlement outcome and the instant it was
+      decided are evidence about what the contract resolved to, never about when a
+      version of its rule text was in force.
+  - field: capture_time
+    reason: current_rule_text_is_not_historical_rule_evidence
+    why: >-
+      the instant a capture was taken dates the fetch. A rule text fetched today cannot
+      attest its own past version, which is the single input this whole pipeline
+      exists to produce honestly rather than assume.

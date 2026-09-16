@@ -1,0 +1,96 @@
+# Event and observation windows, v2 freeze.
+#
+# `configs/event_windows.yaml` stays frozen and unchanged. This file declares the
+# windows the v2 run measures on, including the two the v1 file did not have: the
+# donor's lag-guarded read and the recipient's own pre-origin increment.
+#
+# Every offset is seconds relative to the scheduled release time. No window is
+# extended to cover a market that had already closed, and no missing leg is filled
+# from a neighbouring leg.
+
+alignment:
+  reference_point: scheduled_release_time
+  reference_precision: seconds
+  source_calendar_timezone: America/New_York
+  storage_timezone: UTC
+  offset_conversion: IANA_timezone_database
+  fixed_utc_offset_allowed: false
+  observed_publication_time_used_when: available_from_archived_payload
+  scheduled_time_used_when: observed_publication_time_unavailable
+  clock_basis: source
+  basis_is_retrospective: true
+
+clock:
+  forecast_origin_seconds: 300
+  lag_guard_seconds: 60
+  future_horizon_seconds: 300
+  horizons_seconds:
+    - 60
+    - 300
+    - 900
+    - 1800
+    - 3600
+
+windows:
+  # The release's own-market absorption window, measured on the response panel.
+  absorption:
+    window_id: absorption
+    pre_event_seconds: 1800
+    post_event_seconds: 3600
+    baseline_max_age_seconds: 120
+    endpoint_max_age_seconds: 120
+    pre_event_role: baseline_reference
+    post_event_role: primary_response_window
+  # The propagation target window: tau to tau + H. It is the five-to-ten-minute
+  # increment, not the first five minutes' absorption.
+  target:
+    window_id: target
+    opens_at: forecast_origin
+    closes_at: forecast_origin_plus_future_horizon
+    target_max_age_seconds: 120
+  # The donor's read window: the release to tau - L. It stops one guard before the
+  # target opens, so the same prints never inform both sides of the comparison.
+  donor:
+    window_id: donor
+    opens_at: scheduled_release_time
+    closes_at: forecast_origin_minus_lag_guard
+    donor_max_age_seconds: 120
+    requires_post_release_donor_observation: true
+    carried_forward_baseline_forbidden: true
+  # The recipient's own pre-origin increment, over a window of the same declared
+  # length as the target and ending at the origin.
+  own_lag:
+    window_id: own_lag
+    opens_at: forecast_origin_minus_future_horizon
+    closes_at: forecast_origin
+    basis_max_age_seconds: 120
+
+# The observation floor covers the earliest instant any declared leg can read, so a
+# leg that exists but is stale is observed as stale rather than reported as absent.
+observation_floor:
+  covers_every_declared_leg: true
+  formula: >-
+    min(release_time - pre_event_seconds,
+        forecast_origin - (future_horizon_seconds + target_max_age_seconds))
+
+missingness:
+  # A missing observation is null and never zero; a genuine unchanged price stays a
+  # measured zero. The two are different facts and are never merged.
+  missing_is_null: true
+  observed_zero_is_evidence: true
+  fill_forward_forbidden: true
+  carry_anchor_into_target_forbidden: true
+  ties_grouped_before_features: true
+  tie_value: unweighted_mean_of_event_axis_prices
+
+restrictions:
+  - horizons_limited_to_actual_data_resolution
+  - longer_intraday_and_daily_responses_are_separate_outcomes
+  - prospective_sub_second_horizons_excluded_until_clock_audit_passes
+  - no_post_event_quantity_selects_the_candidate_universe
+  - no_post_event_activity_selects_the_receiver_universe
+
+contamination_stop:
+  - market_close_summarises_a_regional_venue_day
+  - scheduled_maintenance
+  - data_feed_outage
