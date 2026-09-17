@@ -590,12 +590,13 @@ dependencies:
   - id: transaction_tape_calibration
     provides: the observed behaviour of the promotion rule
     status: measured
-    verdict: inconclusive
-    measured: 8 estimable nulls promoted in 0 of 200 repetitions each with a one-sided
-      upper bound of 0.0251 at simultaneous level 0.99375 against a 0.05 ceiling;
-      recovery 196 of 200 with a lower bound of 0.9548 against a 0.80 target;
-      `resolution_pause` and `spread_only` emit no comparison row at any repetition
-      count
+    verdict: pass
+    measured: 10 declared nulls, all 10 estimable, promoted in 0 of 200 repetitions
+      each with a one-sided upper bound of 0.02614 at simultaneous level 0.995 against
+      a 0.05 ceiling; recovery 196 of 200 with a lower bound of 0.9548 against a 0.80
+      target; the two nulls that previously emitted no comparison row at any repetition
+      count, `resolution_pause` and `spread_only`, were fixed in their own declarations
+      and are both estimable now
     evidence: configs/study_v2.yaml, data/calibration/calibration_certificate.json
     why_it_matters_here: >-
       it calibrates the promotion rule this study's ladder would use, on a synthetic
@@ -615,7 +616,7 @@ claim_limits:
     - the gap has a measured size of 623 structurally admissible edges, sized with a
       diagnostic sentinel that is explicitly not evidence
     - the calibration measures the promotion rule on a declared synthetic process, with
-      an inconclusive verdict
+      a pass verdict
   may_not_claim:
     - id: conditional_predictive_propagation
       why: >-

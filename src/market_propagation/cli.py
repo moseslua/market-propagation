@@ -81,6 +81,11 @@ DEFAULT_PIPELINE_CONFIG = "configs/external_history_v1.yaml"
 DEFAULT_MARKETS_GLOB = "data/external/kalshi-trades/markets-*.parquet"
 DEFAULT_SECOND_VENUE_GLOB = "data/external/polymarket-v1/daily_aligned_multi/*.parquet"
 
+#: The sealed protocol freeze the CLI writes when no path is given. It mirrors the
+#: package constant ``protocol_freeze.FREEZE_NAME``; the equality is pinned by a test
+#: so the two copies cannot drift apart unnoticed.
+DEFAULT_FREEZE_PATH = "protocol_freeze.json"
+
 
 def _jsonable(value: Any) -> Any:
     """Recursively make a result JSON-representable without inventing a value.
@@ -1258,12 +1263,11 @@ def _run_match_cross_venue(args: argparse.Namespace) -> int:
 
     markets_glob = args.markets_glob
     resolution = None
-    if markets_glob is None:
-        if not args.window_start or not args.window_end:
-            raise ValueError(
-                "no --markets-glob was given, so the first venue's market layer is resolved "
-                "for the window; --window-start and --window-end are both required for that"
-            )
+    if markets_glob is None and args.window_start and args.window_end:
+        # The layer covering the window is resolved so the run can state which one is
+        # authoritative for it. It no longer decides the universe: an omitted
+        # --markets-glob reads the declared union of observation paths, so a contract
+        # the venue listed and the archive omits is still a candidate.
         config = _pipeline_config(args.pipeline)
         root = _repo_relative(
             _dig(config, "inputs.root", purpose="pipeline configuration"), config_path=args.pipeline
@@ -1287,12 +1291,10 @@ def _run_match_cross_venue(args: argparse.Namespace) -> int:
             )
             _note(f"the first venue's market layer was not resolved: {resolution.reason}")
             return EXIT_BLOCKED
-        markets_glob = str(
-            root / dict(market_capture.declared_market_layers(args.pipeline))[resolution.layer]
-        )
         _note(
-            f"first venue's market layer {resolution.layer} ({resolution.basis}); "
-            f"{resolution.reason}"
+            f"first venue's authoritative market layer for this window is {resolution.layer} "
+            f"({resolution.basis}); {resolution.reason}. The candidate universe read below is "
+            "still the union of both declared observation paths"
         )
 
     result = cross_venue.run_cross_venue_matching(
@@ -1453,6 +1455,105 @@ class _ArgumentParser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         self.print_usage(sys.stderr)
         self.exit(EXIT_ERROR, f"{self.prog}: error: {message}\n")
+
+
+def _run_protocol_freeze(args: argparse.Namespace) -> int:
+    """Seal the declared protocol at one instant, or verify a held freeze against it.
+
+    A freeze is taken once and then read back. Writing one requires ``--frozen-at``,
+    because a freeze with no stated instant cannot be told from one taken after a
+    result was seen, which is the only thing the instant is for. Verifying re-hashes
+    every covered file against the held freeze and names the ones that moved, rather
+    than stopping at the first.
+    """
+    from . import protocol_freeze
+
+    if args.verify:
+        manifest = protocol_freeze.read_protocol_freeze(args.verify)
+        report = protocol_freeze.verify_protocol_freeze(manifest)
+        _print_json(report)
+        if report["verified"]:
+            _note(
+                f"the checkout matches the protocol freeze taken at {report['frozen_at']}: "
+                f"{report['files_checked']} covered file(s) checked"
+            )
+            return EXIT_OK
+        for entry in report["drifted"]:
+            _note(f"drifted: {entry['name']}")
+        for name in report["missing"]:
+            _note(f"missing: {name}")
+        for name in report["expected_but_not_covered"]:
+            _note(f"not covered by the freeze: {name}")
+        _note(str(report["what_a_drift_means"]))
+        return EXIT_BLOCKED
+
+    if not args.frozen_at:
+        raise ValueError(
+            "freezing the protocol requires --frozen-at: a freeze with no stated instant "
+            "cannot be told from one taken after a result was seen"
+        )
+    manifest = protocol_freeze.build_protocol_freeze(frozen_at=args.frozen_at)
+    written = protocol_freeze.write_protocol_freeze(
+        manifest, args.output or protocol_freeze.FREEZE_NAME
+    )
+    payload = dict(manifest)
+    payload["freeze_path"] = str(written)
+    _print_json(payload)
+    _note(
+        f"froze {manifest['files_covered']} covered file(s) at {manifest['frozen_at']}; "
+        f"freeze hash {manifest['freeze_hash'][:12]}; written to {written}"
+    )
+    if manifest["files_absent_at_freeze"]:
+        _note(
+            "covered but absent at the freeze, recorded as null rather than omitted: "
+            + ", ".join(manifest["files_absent_at_freeze"])
+        )
+    _note(
+        "this is not evidence about any contract or release; it records which rules were "
+        "in force when the claim was registered"
+    )
+    return EXIT_OK
+
+
+def _run_confirmatory_progress(args: argparse.Namespace) -> int:
+    """Report how far the study is from a confirmatory sample, from the artifacts held.
+
+    Every prerequisite is computed rather than asserted, so the ledger cannot drift from
+    what is actually on disk. Whether an observation precedes a release is read through
+    the attestation module's own bounding instant, so a capture whose response states no
+    instant counts for nothing rather than being dated by this run's clock.
+    """
+    from . import confirmatory
+
+    ledger = confirmatory.confirmatory_progress(capture_root=args.root, attest=not args.no_attest)
+    if args.output:
+        written = confirmatory.write_progress_ledger(ledger, args.output)
+        ledger = {**ledger, "output_path": str(written)}
+    _print_json(ledger)
+    _note(
+        f"{ledger['captures_held']} capture(s) held under {ledger['capture_root']}, "
+        f"{ledger['captures_stating_an_instant']} stating an instant; "
+        f"{ledger['releases_whose_window_an_observation_precedes']} of "
+        f"{ledger['releases_total']} declared release(s) have a dated observation ahead of them"
+    )
+    for name, arm in ledger["arms"].items():
+        _note(
+            f"  {name} ({arm['cohort_id']}): "
+            f"{arm['releases_whose_window_an_observation_precedes']} of "
+            f"{arm['declared_releases']} release(s) preceded"
+        )
+    attestation = ledger["rule_attestation"]
+    if attestation.get("read"):
+        _note(
+            f"rule attestation: {attestation.get('contracts_attested')} of "
+            f"{attestation.get('contracts_examined')} contract(s) attested"
+        )
+    else:
+        _note(f"rule attestation was not read: {attestation.get('reason')}")
+    for item in ledger["prerequisites_not_readable_from_any_artifact"]:
+        _note(f"unobservable: {item['prerequisite']} — {item['reason']}")
+    _note(str(ledger["caveat"]))
+    return EXIT_OK if ledger["releases_whose_window_an_observation_precedes"] else EXIT_BLOCKED
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -2044,6 +2145,46 @@ def _build_parser() -> argparse.ArgumentParser:
         "--report", action="store_true", help="summarise what is held, fetching nothing"
     )
     perp.set_defaults(handler=_run_perp_collect)
+
+    protocol = commands.add_parser(
+        "protocol-freeze",
+        help="seal the declared protocol at one instant, or verify a held freeze",
+        description=(
+            "Hash every declaration and estimand-defining module, record the instant the "
+            "freeze is taken and the declared stopping rule, and write one sealed freeze. "
+            "Given a held freeze, re-hash the same files and report which of them moved. "
+            "The freeze records which rules were in force when a claim was registered; it "
+            "is not evidence about any contract, release or venue, and it reads no data."
+        ),
+    )
+    protocol.add_argument(
+        "--frozen-at",
+        help="T0: the instant the freeze is taken (required to write one)",
+    )
+    protocol.add_argument(
+        "--output", help=f"path of the freeze to write (default: {DEFAULT_FREEZE_PATH})"
+    )
+    protocol.add_argument("--verify", help="path of a held freeze to re-hash the checkout against")
+    protocol.set_defaults(handler=_run_protocol_freeze)
+
+    progress = commands.add_parser(
+        "confirmatory-progress",
+        help="report how far the study is from a confirmatory sample",
+        description=(
+            "For every release both declared arms state, report whether a dated rule "
+            "capture precedes it, plus the rule-attestation totals and the prerequisites "
+            "no artifact on this checkout can answer. Each state is computed from the "
+            "artifacts held rather than asserted, and a prerequisite that cannot be read "
+            "is reported unobservable with its reason rather than as met or unmet. The "
+            "ledger is not evidence about any contract or release."
+        ),
+    )
+    progress.add_argument("--root", help="rule capture store root (default: the declared root)")
+    progress.add_argument("--output", help="path of the ledger JSON to write")
+    progress.add_argument(
+        "--no-attest", action="store_true", help="skip reading the rule attestation totals"
+    )
+    progress.set_defaults(handler=_run_confirmatory_progress)
 
     return parser
 

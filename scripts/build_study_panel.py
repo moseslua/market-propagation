@@ -25,7 +25,6 @@ import datetime as dt
 import json
 from pathlib import Path
 
-import duckdb
 import yaml
 
 from market_propagation.ingest.audit import series_of
@@ -35,55 +34,50 @@ from market_propagation.ingest.external_history import (
     write_trades,
 )
 from market_propagation.ingest.external_inventory import load_inventory
+from market_propagation.ingest.kalshi_universe import union_market_rows
 from market_propagation.trade_panel import build_trade_panel, load_event_specs, load_panel_settings
 
 CONFIG_PATH = "configs/external_history_v1.yaml"
 DEFAULT_INVENTORY = ".audit/acceptance/first/inventory/inventory.json"
-MARKETS_GLOB = "data/external/kalshi-trades/markets-*.parquet"
 KALSHI_LAYER = "kalshi_trades"
+
+#: The columns candidate selection is read from, projected from every declared layer.
+STUDY_COLUMNS: tuple[str, ...] = ("ticker", "open_time", "close_time", "status", "title")
 
 
 def _config() -> dict:
     return yaml.safe_load(Path(CONFIG_PATH).read_text(encoding="utf-8"))
 
 
-def _candidate_markets(policy_series: set[str]) -> list[dict]:
-    """Every declared-series contract with the listing interval its archive records.
+def _candidate_markets(policy_series: set[str]) -> tuple[list[dict], dict]:
+    """Every declared-series contract, observed through either admissible path.
 
-    The scan is bounded by the declared series in SQL and then filtered with
-    :func:`market_propagation.ingest.audit.series_of`, so the series parser is the
-    one the coverage audit already owns instead of a second copy here. Filtering
-    on ``LIKE 'FED-%'`` alone would drop the sibling ``FEDDECISION`` series, which
-    is a declared policy series and whose contracts are candidates in their own
-    right.
+    Read from the declared union rather than from the archive alone, so a contract the
+    venue listed but the archive omits is still a candidate: archive presence is an
+    observation mechanism and never a membership rule.
+
+    The series parser is the one the coverage audit already owns instead of a second
+    copy here. Filtering on ``LIKE 'FED-%'`` alone would drop the sibling
+    ``FEDDECISION`` series, which is a declared policy series and whose contracts are
+    candidates in their own right.
     """
-    con = duckdb.connect()
-    con.execute("SET TimeZone='UTC'")
-    placeholders = ", ".join("?" for _ in policy_series)
-    rows = con.execute(
-        f"""
-        SELECT ticker, open_time::VARCHAR AS open_time, close_time::VARCHAR AS close_time,
-               status, title
-        FROM read_parquet('{MARKETS_GLOB}')
-        WHERE regexp_extract(ticker, '^[A-Z]+') IN ({placeholders})
-        """,
-        sorted(policy_series),
-    ).fetchall()
-    con.close()
+    rows, population = union_market_rows(sorted(policy_series), columns=STUDY_COLUMNS)
     out: list[dict] = []
-    for ticker, opened, closed, status, title in rows:
+    for row in rows:
+        ticker = str(row["ticker"])
         if series_of(ticker) not in policy_series:
             continue
         out.append(
             {
                 "ticker": ticker,
-                "open_time": opened,
-                "close_time": closed,
-                "status": status,
-                "title": title,
+                "open_time": row["open_time"],
+                "close_time": row["close_time"],
+                "status": row["status"],
+                "title": row["title"],
+                "observation_origin": row["observation_origin"],
             }
         )
-    return out
+    return out, population
 
 
 def _instant(text: str | None) -> dt.datetime | None:
@@ -114,7 +108,7 @@ def main() -> int:
         config["inputs"]["release_dataset"],
         rule_evidence_path=config["inputs"].get("rule_evidence_source"),
     )
-    markets = _candidate_markets(policy_series)
+    markets, population = _candidate_markets(policy_series)
 
     # Candidate selection, per release, from listing intervals alone. The grid is
     # keyed by release and reaches ``build_trade_panel`` as the denominator, so a
@@ -160,6 +154,7 @@ def main() -> int:
     summary = {
         "policy_series": sorted(policy_series),
         "candidate_markets_declared_series": len(markets),
+        "population": population,
         "candidates_per_event": {k: len(v) for k, v in sorted(per_event.items())},
         "candidate_grid_declared_pairs": sum(len(v) for v in per_event.values()),
         "candidate_union": len(candidates),

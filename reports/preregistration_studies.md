@@ -218,9 +218,16 @@ Three rules keep the ladder honest:
    columns (`shock`, `delayed_shock`, `neighbor_lag`, `neighbor_lag_control`), and a
    column that exists and is null on every row is reported as *unsupplied* rather than
    fitted as a constant.
-3. **Inconclusive is a distinct verdict from pass and from fail.** The rule
-   calibration's `inconclusive`, because two of ten declared nulls emit no comparison
-   row at any repetition count, is reported as such rather than rounded to a pass.
+3. **Inconclusive is a distinct verdict from pass and from fail.** A result that
+   cannot separate zero from the smallest relevant effect is reported as such rather
+   than rounded to a pass. The rule calibration was reported `inconclusive` while two
+   of ten declared nulls emitted no comparison row at any repetition count, because a
+   family bound cannot be certified over a declaration part of which contributes
+   nothing. Both causes turned out to be defects in the two scenarios' own
+   declarations — `spread_only`'s declared zero sensitivity, skipped by the shock
+   recovery instead of read as the exact value it is, and `resolution_pause`'s halt
+   interval, which covered every primary window — and with both fixed the calibration
+   now returns `pass` over all ten estimable nulls.
 
 ### 4.2 What each study may occupy today
 
@@ -287,17 +294,23 @@ scenario with simultaneous null bounds.
 | Quantity | Value |
 | --- | --- |
 | Declared null scenarios | 10 |
-| Estimable nulls | 8, promoted in 0 of 200 repetitions each |
-| Null one-sided upper bound, simultaneous level 0.99375 | 0.0251 against a 0.05 ceiling |
+| Estimable nulls | 10, promoted in 0 of 200 repetitions each |
+| Null one-sided upper bound, simultaneous level 0.995 | 0.02614 against a 0.05 ceiling |
 | Recovery `communication` | promoted 196 of 200; rate 0.98; one-sided lower bound 0.9548 against a 0.80 target |
-| Verdict | `inconclusive` |
+| Verdict | `pass` |
 | Certificate | `data/calibration/calibration_certificate.json` |
 
-The verdict is inconclusive because `resolution_pause` and `spread_only` emit no
-comparison row by construction and so have no estimable rate; a family bound cannot be
-certified over a declaration two of whose nulls contribute nothing. The run reports
-both rather than dropping them, because dropping them would widen the bound the
-surviving nulls are held to and read as evidence they never supplied.
+The verdict is a `pass` over all ten declared nulls. Two of them previously produced
+no comparison row at all, which blocked 200 of 200 repetitions and left the family
+bound uncertifiable; both causes were defects in the scenarios' own declarations, and
+both are fixed. `spread_only` declares `news_active=False`, so every contract's
+sensitivity is 0, and the shock recovery skipped any event whose strength was falsy
+rather than reading a declared zero as the exact value it is; such an event now
+receives an explicit `0.0` shock. `resolution_pause` declared a halt of
+`(300.0, 900.0)`, which covered every primary window of `[event+300s, event+600s]`;
+the declared halt is now `(700.0, 1000.0)`, which opens after the primary window
+closes, so it still invalidates every window that spans it without consuming all of
+them. With both fixed, all ten nulls are estimable and the family bound certifies.
 
 **This calibrates a decision rule on a synthetic process and nothing else.** It is not
 evidence about any real venue, release or contract, and it does not unblock the primary
@@ -316,7 +329,7 @@ and no promotion rule, so the certificate does not transfer.
 | Reversed-edge diagnostic | **not run**: no edge in either direction |
 | Leave-one-release-out | **not run**: no fitted primary estimate |
 | Placebo releases matched on time of day | **not run**: no fitted primary estimate |
-| Multi-null Bonferroni certificate | run inside the calibration; simultaneous level 0.99375 over 8 estimable nulls |
+| Multi-null Bonferroni certificate | run inside the calibration; simultaneous level 0.995 over 10 estimable nulls |
 | Transaction observation process | run; the calibration's tapes pass through the declared transaction observation path |
 | Study D build-to-build persistence | **not run**: one build held |
 
@@ -390,7 +403,7 @@ exists.
 | **Point-in-time expectation source** | **absent** | 9 of 10 releases have a pre-release capture; none is bound as a validated record | A (news rung), B, C |
 | Polymarket transaction archive | present | 1,248 shards, 2022-11-21 to 2026-04-28 | — |
 | **Verified cross-venue rule match** | **absent** | 0 matches; no per-meeting policy-decision market live at any release | **B** |
-| Transaction-tape calibration | measured, inconclusive | 8 nulls at 0/200; recovery 196/200; 2 nulls not estimable | — |
+| Transaction-tape calibration | measured, pass | 10 nulls at 0/200; recovery 196/200 | — |
 | Perp market and funding pages | present | 24 assets, 889 quotes, 47 venues, 18,547 differentials | — |
 | **Perp build-to-build series** | **partial** | **1 distinct build held** | **D** |
 | **Perp execution-cost layer** | **absent** | refusal on 18,547 of 18,547 differentials | **D** |
@@ -477,7 +490,7 @@ the build series, is already closing because the collector is running.
 | --- | --- | --- |
 | Declared-grid census with missingness accounting | A | run |
 | Exploratory rule-reason-only panel | A | run; degenerate, reported as such |
-| Calibration of the promotion rule on synthetic tapes | A, C | run; verdict `inconclusive` |
+| Calibration of the promotion rule on synthetic tapes | A, C | run; verdict `pass` |
 | Aggregate cross-venue release-window activity | B | runnable, exploratory |
 | Perp cross-sectional spread census and break-even curve | D | runnable, exploratory, with the cost refusal attached |
 | Perp interval-derivation reconciliation | D | runnable |

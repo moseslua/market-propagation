@@ -97,9 +97,101 @@ cannot support.
     captured shard's `created_time` is the contract's own creation time, so reading
     coverage from row times would claim our layer reaches windows it cannot and
     recreate the retroactive error the capture exists to avoid.
+- **One definition of the contract universe** —
+  `src/market_propagation/ingest/kalshi_universe.py`, 7 tests. The universe is read as
+  the **union** of the two declared observation paths (`kalshi_own_markets`, this
+  repository's own capture, and `kalshi_markets`, the vendor archive) rather than from
+  the archive alone, and never as their intersection. Every row carries
+  `seen_archive`, `seen_live` and an `observation_origin` of `archived_only`,
+  `live_only` or `archived_and_live`; a contract both paths hold is one contract with
+  two observations, so the overlap cannot inflate the denominator. Where the two paths
+  disagree, the declared layer order resolves the field, and a field only one path
+  states is still carried. The union identity is **asserted rather than reported**:
+  counts that do not sum to the universe raise `UniverseError`. A caller that names its
+  own glob reads exactly that path and claims no declared provenance.
+- **Protocol freeze** — `src/market_propagation/protocol_freeze.py`, 13 tests, and the
+  command `protocol-freeze`. It hashes the 18 declarations (the cohort, ladder, timing,
+  threshold, window and evidence configurations, plus the preregistration and its
+  addenda) and the 13 modules that define the estimands, records the instant the freeze
+  was taken (T0) and the declared stopping rule, and writes one sealed freeze.
+  `--verify` re-hashes the same files against a held freeze and names every one that
+  moved rather than stopping at the first; an intact checkout exits `0` and a drifted one
+  exits `2` naming the file. T0 is required to write a freeze and must state an offset,
+  because a freeze with no stated instant cannot be told from one taken after a result
+  was seen. A covered file that is absent is recorded as `null` rather than omitted, so a
+  file that appears later is a change rather than an addition the freeze never saw.
+  - Exercised against this session's own work rather than only in tests: a freeze taken
+    before the D2 and D6 declaration changes was re-verified after them and flagged
+    exactly the seven files that had moved — `configs/study_v2.yaml`,
+    `configs/cohort_v2.yaml`, `configs/neighbor_graph_v2.yaml`, both study
+    configurations under `configs/studies/`, and both preregistration documents — which
+    is the behaviour the check exists for. The sealed freeze is then taken over the
+    final state at `2026-09-17T06:19:40Z`, 31 covered files, freeze hash
+    `c0802022518d`, and verifies clean.
+- **Confirmatory progress ledger** — `src/market_propagation/confirmatory.py`, 9 tests,
+  and the command `confirmatory-progress`. For every release both declared arms state,
+  it reports whether a held rule capture states an instant at or before it, so progress
+  toward a confirmatory sample is computed from the artifacts rather than asserted in
+  prose. The test is the attestation module's own `bounding_instant`, so a capture whose
+  response states no instant opens nothing rather than being dated by the run's clock. A
+  prerequisite no artifact can answer is reported `unobservable` with its reason —
+  also never as met, and never as unmet, because "we cannot read it" and "it is not
+  there" are different facts.
+
+### Changed
+
+- **The candidate universe is read from both observation paths.** `build_study_panel.py`,
+  `build_forecast_panel.py`, `cross_venue.py` and the CLI now read the one universe
+  module rather than deriving a universe each, so the five readers cannot drift apart.
+  `match-cross-venue` still resolves and records which layer is authoritative for a
+  window, but that resolution no longer decides membership: omitting `--markets-glob`
+  reads the union, and the result states
+  `first_venue_universe_is_the_union_of_observation_paths`. Naming a glob still reads
+  exactly that path.
+  - This is a **conformance fix, not an estimand change.** The preregistration declares
+    membership by series and listing interval and names no observation path; "recorded"
+    had been implemented as "recorded in the vendor archive", which is narrower than the
+    declaration. The four declared policy series, the listing-interval test, the
+    grid-as-denominator and the 785 declared pairs are all unchanged.
+  - Measured on this checkout: **689 contracts in the union — 526 `archived_only`, 0
+    `live_only`, 163 `archived_and_live`**, over 1 live shard and 4 archive shards. The
+    retrospective arm is therefore unchanged by it; the forward arm's declared universe
+    would have been empty without it, because the archive's rows end 2026-01-29 and every
+    forward release falls after that.
+- `reports/population_change_d2.md` is new: the estimand record for the change above,
+  written as a page rather than an edit because admitting live-observed contracts was
+  recorded as a cohort decision rather than a wiring change. `reports/preregistration_v2.md`
+  carries it as a dated addendum beside the frozen clause instead of rewriting it.
 
 ### Fixed
 
+- **Two declared nulls produced no comparison row at all.** The calibration's verdict
+  was `inconclusive` because `spread_only` and `resolution_pause` blocked **200 of 200
+  repetitions**, so the family-wise simultaneous bound was not certifiable for the
+  declaration as written. Both causes were in the declarations rather than in the
+  estimator, and both are now fixed; 15 tests pin them, and a revert check confirms each
+  test fails when its fix is undone.
+  - **A declared zero shock reached the news control as a missing value.**
+    `spread_only` declares `news_active=False`, so every contract's sensitivity is 0.
+    `simulated_release_shocks` recovers the generator's per-release common shock as
+    `latent / (orientation * strength)` and skipped any event whose strength was falsy,
+    so it returned an **empty** mapping; the ladder's `shock` and `delayed_shock` columns
+    were then filled with `None`, and `nested_comparison` found **0 complete rows of 20**.
+    An event for which no role carries a declared sensitivity now gets an explicit `0.0`,
+    because the process declares an exact zero common news term rather than an unmeasured
+    one — the same absence-is-not-zero distinction this repository enforces elsewhere.
+    Measured before the fix: `shock` 0/20 and `delayed_shock` 0/20 non-null.
+  - **The declared halt covered the entire primary measurement window.** The calibration's
+    declared forecast settings are `forecast_origin_seconds=300`, `future_horizon_seconds=300`,
+    so every primary row's window is `[event+300s, event+600s]`. `resolution_pause` declared
+    `pause=(300.0, 900.0)`, which contains that window end to end, so **every** primary row
+    was marked `halted_during_window` and its target was null: **0 of 20 rows** carried a
+    target. The declared halt is now `(700.0, 1000.0)`, which opens after the primary
+    window closes at +600s, so the halt still invalidates every window that spans it while
+    no longer consuming all of them.
+  - Verified after the fix at `n_releases=60` over three seeds: `spread_only` and
+    `resolution_pause` both `complete` with `promoted=False`, while `communication` stays
+    `complete` with `promoted=True` at every seed.
 - **The observation run closed itself.** The run was grouped on the digest of the
   archived page, and the venue's live listing carries fields that move between fetches
   while the rule text inside it does not. Measured: one `KXFED` page was 122,578 bytes
@@ -166,7 +258,28 @@ cannot support.
   decision recorded the live cutoff as 2026-07-18 from `trades_created_ts`. The live
   ledger carries each contract's own published rule text where the vendor archive's
   volume column stores a zero.
-- **Test suite.** 1076 → **1117** tests. `ruff check` and `ruff format --check` clean.
+- **The calibration is re-run after the two null declarations were fixed.** 200
+  repetitions per scenario at 120 releases, seed 20260913, 9 workers — exactly the
+  declared design, over the same production path. **Verdict `pass`**, where the previous
+  run's was `inconclusive` because two declared nulls emitted no comparison row at all.
+  All **10 of 10** declared null scenarios are now estimable and every one of them
+  promoted in **0 of 200** repetitions, a one-sided upper bound of **0.02614** at
+  simultaneous level **0.995** against the 0.05 ceiling. Recovery `communication`
+  promoted **196 of 200**, rate 0.98, one-sided lower bound **0.9548** against the 0.80
+  target. `spread_only` and `resolution_pause` each now complete **200 of 200** at 0
+  promoted, where each previously blocked **200 of 200**. Certificate
+  `data/calibration/calibration_certificate.json`; registry record
+  `calibration-2856211b642b-bd7e5e807f5c`.
+  - The bound moved **outward**, from 0.0251 to 0.02614, and that is the correct
+    direction for it to move. The simultaneous level is divided across the estimable
+    nulls, so it rose from 0.99375 to 0.995 only because two more nulls entered the
+    family: the weaker per-null bound buys coverage of a declaration that previously had
+    two members contributing nothing. A tighter bound over fewer nulls would have been
+    the worse result.
+  - This certifies the behaviour of the promotion rule on a declared synthetic process.
+    It is not an empirical finding about any venue, release or contract, and it unblocks
+    no claim: `confirmatory_estimation_permitted` stays false.
+- **Test suite.** 1076 → **1165** tests. `ruff check` and `ruff format --check` clean.
 
 ### Not established
 

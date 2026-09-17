@@ -203,13 +203,13 @@ Whether a rulebook-level filing can attest a contract-level vintage is a questio
 about the declared evidence standard, not a search problem. Widening that standard is
 a decision for the study owner.
 
-### Calibration: run, and inconclusive
+### Calibration: run, and a pass
 
 The declared calibration ran at 200 repetitions per primary scenario: simulated
 transaction tapes passed through the same graph, observation, feature, fitting,
 tuning, paired-uncertainty and promotion code as real data, with simultaneous null
 bounds. Certificate `data/calibration/calibration_certificate.json`; registry record
-`calibration-2856211b642d-fadcc9c34813` in `data/registry/rule_calibration.sqlite3`,
+`calibration-2856211b642b-bd7e5e807f5c` in `data/registry/rule_calibration.sqlite3`,
 carrying a `source_hash` over the modules and configurations that produced it.
 
 | Quantity | Value |
@@ -218,20 +218,29 @@ carrying a `source_hash` over the modules and configurations that produced it.
 | Releases per repetition | 120 |
 | Workers, seed, bootstrap draws | 9, 20260913, 200 |
 | Declared null scenarios | 10 |
-| Nulls estimable | 8, each promoted in 0 of 200 repetitions |
-| Null one-sided upper bound, at simultaneous level 0.99375 | 0.0251, against a 0.05 ceiling |
+| Nulls estimable | 10, each promoted in 0 of 200 repetitions |
+| Null one-sided upper bound, at simultaneous level 0.995 | 0.02614, against a 0.05 ceiling |
 | Recovery `communication` | promoted in 196 of 200; rate 0.98; one-sided lower bound 0.9548 against a 0.80 target |
-| Verdict | `inconclusive` |
+| Verdict | `pass` |
 
-The verdict is inconclusive rather than pass because `resolution_pause` and
-`spread_only` are not estimable at any repetition count. `spread_only` declares that
-the latent value does not move, so `simulated_release_shocks` recovers no shock for
-it and the nested comparison has no complete row; `resolution_pause` halts the venue
-across its own measured window, so its rows are invalid rather than filled. Each
-blocked 200 of 200 repetitions on a not-run comparison. The family's simultaneous
-bound cannot be certified while two declared nulls contribute no rate, and the run
-reports that rather than dropping them, which would have widened the bound the
-surviving nulls are held to.
+The first run reported two of the ten declared nulls as unestimable — `resolution_pause`
+and `spread_only` — and both causes were defects in those scenarios' own declarations
+rather than in the estimator, the bound or the promotion rule. `spread_only` declares
+`news_active=False`, so every contract's declared sensitivity is zero;
+`simulated_release_shocks` recovered the generator's per-release common shock as
+`latent / (orientation * strength)` and skipped any event whose strength was falsy,
+which returned an empty mapping and left the ladder's `shock` and `delayed_shock`
+columns filled with nulls, so `nested_comparison` found no complete row. An event whose
+roles all carry a declared zero sensitivity now receives an explicit `0.0` shock,
+because a declared zero is an exact value and not a missing measurement.
+`resolution_pause` declared `pause=(300.0, 900.0)` while the declared forecast settings
+are `forecast_origin_seconds=300` and `future_horizon_seconds=300`, so every primary
+row's window is `[event+300s, event+600s]` — entirely inside that halt. Every row was
+therefore marked halted and its target was null. The declared halt is now
+`(700.0, 1000.0)`, which opens after the primary window closes at +600s, so the halt
+still invalidates every window that spans it without consuming all of them. Each
+defect had blocked 200 of 200 repetitions on a not-run comparison; with both
+declarations corrected the family's simultaneous bound is certified for all ten nulls.
 
 The earlier 48-repeat `network_falsification` call stays recorded in the v2
 configurations as superseded: it counts a gain-threshold event on the quote/simulator
@@ -256,7 +265,15 @@ archive still admits no edge.
 * **The candidate universe is now declared.** 785 pairs, 697 of which never traded,
   are in the denominator with their missing cells preserved, so a later run cannot
   report a cleaner observed fraction by letting untraded contracts fall out of the
-  grid.
+  grid. The universe those pairs are drawn from is the union of the two declared
+  observation paths — `kalshi_own_markets`, this repository's own live capture under
+  `data/external/kalshi-own/markets/markets-*.parquet`, and `kalshi_markets`, the
+  vendor archive under `data/external/kalshi-trades/markets/markets-*.parquet` —
+  rather than the archive alone: measured on this checkout, 689 contracts, split 526
+  `archived_only`, 0 `live_only` and 163 `archived_and_live`. That is the source the
+  candidates are read from, not a change to who is eligible: the declared membership
+  rule was already observation-source agnostic, and the 785 declared pairs are
+  unchanged by this.
 
 ## Stage log
 
@@ -268,7 +285,7 @@ archive still admits no edge.
 | S3 graph and forecast panel | complete | declared calendar, rule-interval and window liveness, contract-level refusals, declared receivers |
 | S4 analysis integration | complete | ladder fitted on real forecast rows, blocked rungs named; `study-external` accepts `--forecast-panel` and `--registry` |
 | S5 design lock | complete | v2 configs and `reports/preregistration_v2.md` frozen |
-| S5 calibration | complete | 200-repetition transaction-tape calibration run; verdict inconclusive because two declared nulls are not estimable; superseded 48-repeat run recorded as insufficient |
+| S5 calibration | complete | 200-repetition transaction-tape calibration run; verdict `pass`, all ten declared nulls estimable at 0 of 200 repetitions each, upper bound 0.02614 at level 0.995; two declaration defects fixed before the rerun; superseded 48-repeat run recorded as insufficient |
 | S6 empirical evaluation | not opened | no valid primary panel row, so no test release was reserved |
 | S7 robustness | partial | exclusion accounting and missingness run; estimate-dependent analyses unrun and reported as unrun |
 | S8 final package | complete | acceptance run below; reports corrected |

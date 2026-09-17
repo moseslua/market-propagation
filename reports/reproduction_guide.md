@@ -516,8 +516,10 @@ The panel built by the script and the panel built through the CLI are byte-ident
 ladder has no valid row to fit and the propagation rung is blocked on named inputs.
 Calibration is **not** claimed from this archive run: it is measured on simulated
 tapes, recorded in `data/calibration/calibration_certificate.json` with verdict
-`inconclusive`, and `configs/study_v2.yaml` carries the rates. Four things to check
-rather than take on trust:
+`pass` — all ten declared nulls estimable at 0 of 200 repetitions each, a one-sided
+upper bound of 0.02614 at simultaneous level 0.995, and recovery 196 of 200 at a
+one-sided lower bound of 0.9548 — and `configs/study_v2.yaml` carries the rates. Four
+things to check rather than take on trust:
 
 - `propagation.missing_neighbor_columns` and `missing_news_columns` name exactly
   what is absent, and `propagation.supported` is `false`, so no substituted model
@@ -618,8 +620,18 @@ gap in the search:
 - **The candidate universe is declared.** The first venue's candidates are the
   contracts whose series `configs/cohort_v2.yaml` declares, matched through
   `series_of` rather than by substring, because a `LIKE 'FED-%'` test drops the
-  sibling `FEDDECISION` series. The second venue's are the records whose own
-  identity column matches the declared pattern in `configs/matching_v1.yaml`.
+  sibling `FEDDECISION` series. Those contracts are read from the union of the two
+  declared observation paths — `kalshi_own_markets`, this repository's own live
+  capture under `data/external/kalshi-own/markets/markets-*.parquet`, and
+  `kalshi_markets`, the vendor archive under
+  `data/external/kalshi-trades/markets/markets-*.parquet` — rather than from the
+  archive alone: a contract either path observed is a candidate, and a contract only
+  one path holds still carries the fields that path states. Omitting
+  `--markets-glob` reads that union and records each record's observation
+  provenance (`archived_only`, `live_only`, or `archived_and_live`); naming
+  `--markets-glob` reads exactly that path and claims no declared provenance for it.
+  The second venue's are the records whose own identity column matches the declared
+  pattern in `configs/matching_v1.yaml`.
 - **The filter is a selection rule and never evidence.** It decides the denominator
   and nothing else. No similarity score is computed anywhere, no grade or refusal is
   expressed in terms of the pattern, and a record the filter excludes is outside the

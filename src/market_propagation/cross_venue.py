@@ -46,6 +46,12 @@ import duckdb
 import yaml
 
 from .ingest.audit import series_of
+from .ingest.kalshi_universe import (
+    MARKET_LAYERS,
+    PREDICATE_COLUMNS,
+    declared_layer_origin,
+    union_market_rows,
+)
 from .matching import (
     MatchingSettings,
     MatchRegistry,
@@ -112,37 +118,62 @@ def declared_calendar(graph_config: dict[str, Any]) -> dict[tuple[int, int], dt.
     return {(date.year, date.month): date for date in dates}
 
 
-def first_venue_records(markets_glob: str, series: tuple[str, ...]) -> list[dict[str, Any]]:
+def first_venue_records(
+    markets_glob: str | None = None,
+    series: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
     """Every declared-series contract with the text its predicate is read from.
+
+    Read from the declared union of observation paths by default, so a contract the
+    venue listed but the archive omits is still a candidate and the archive is one
+    observation mechanism rather than the definition of existence. An explicit glob
+    narrows to one layer, which a caller does when a window has to be resolved to a
+    single path; a glob that is not one of the declared layer globs is not an
+    observation path, so those records claim no provenance instead of borrowing one.
 
     The series test is applied in Python through the declared parser rather than in
     SQL, so the membership rule has exactly one implementation and a ticker that
     merely contains the letters is not a match.
     """
-    files = sorted(glob.glob(markets_glob))
-    if not files:
-        raise CrossVenueError(f"no market records matched {markets_glob}")
-    connection = duckdb.connect()
-    try:
-        connection.execute("SET TimeZone='UTC'")
-        rows = connection.execute(
-            f"""
-            SELECT ticker, event_ticker, yes_sub_title, title
-            FROM read_parquet({files!r})
-            """
-        ).fetchall()
-    finally:
-        connection.close()
+    if markets_glob is None:
+        rows, _population = union_market_rows(series, columns=PREDICATE_COLUMNS)
+        if not rows:
+            raise CrossVenueError(
+                "no market records matched any declared layer: "
+                + ", ".join(f"{name}={pattern}" for name, pattern in MARKET_LAYERS)
+            )
+    else:
+        files = sorted(glob.glob(markets_glob))
+        if not files:
+            raise CrossVenueError(f"no market records matched {markets_glob}")
+        connection = duckdb.connect()
+        try:
+            connection.execute("SET TimeZone='UTC'")
+            raw = connection.execute(
+                f"""
+                SELECT ticker, event_ticker, yes_sub_title, title
+                FROM read_parquet({files!r})
+                """
+            ).fetchall()
+        finally:
+            connection.close()
+        origin = declared_layer_origin(markets_glob)
+        rows = [
+            {**dict(zip(PREDICATE_COLUMNS, row, strict=True)), "observation_origin": origin}
+            for row in raw
+        ]
+
     declared = set(series)
     records = [
         {
-            "contract_id": str(row[0]),
-            "event_ticker": str(row[1] or ""),
-            "yes_sub_title": str(row[2] or ""),
-            "title": str(row[3] or ""),
+            "contract_id": str(row["ticker"]),
+            "event_ticker": str(row["event_ticker"] or ""),
+            "yes_sub_title": str(row["yes_sub_title"] or ""),
+            "title": str(row["title"] or ""),
+            "observation_origin": row["observation_origin"],
         }
         for row in rows
-        if series_of(str(row[0])) in declared
+        if series_of(str(row["ticker"])) in declared
     ]
     return sorted(records, key=lambda record: record["contract_id"])
 
@@ -314,7 +345,7 @@ def run_cross_venue_matching(
     match_config_path: str | pathlib.Path = MATCH_CONFIG_PATH,
     cohort_config_path: str | pathlib.Path = COHORT_CONFIG_PATH,
     graph_config_path: str | pathlib.Path = GRAPH_CONFIG_PATH,
-    markets_glob: str = KALSHI_MARKETS_GLOB,
+    markets_glob: str | None = None,
     second_venue_glob: str = POLYMARKET_GLOB,
     second_venue_limit: int | None = None,
     slug_pattern: str | None = None,
@@ -349,6 +380,18 @@ def run_cross_venue_matching(
     selection["declared_policy_series"] = list(series)
     selection["contracts_available_in_the_first_venue"] = len(records)
     selection["contracts_supplied_from_the_first_venue"] = len(records)
+    # The first venue's candidate universe is now the union of two observation paths, so
+    # the selection records how many contracts came through each. A contract read from a
+    # caller-supplied glob claims no declared path and is labelled as such rather than
+    # being folded into one of the real paths.
+    first_venue_provenance = collections.Counter(
+        "not_a_declared_observation_path"
+        if record["observation_origin"] is None
+        else str(record["observation_origin"])
+        for record in records
+    )
+    selection["first_venue_observation_provenance"] = dict(sorted(first_venue_provenance.items()))
+    selection["first_venue_universe_is_the_union_of_observation_paths"] = markets_glob is None
 
     reads = (
         *first_venue_reads(records, settings=settings, calendar=calendar),

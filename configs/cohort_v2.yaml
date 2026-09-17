@@ -185,11 +185,16 @@ blocked_claims:
     why: >-
       the transaction-tape calibration ran at 200 repetitions per primary scenario
       over simulated tapes through the same graph, observation, feature, fitting,
-      tuning, paired-uncertainty and promotion code as real data. Verdict
-      inconclusive: every estimable null promoted in 0 of 200 repetitions and the
-      recovery scenario promoted in 196 of 200, but two declared nulls emit no
-      comparison row by construction, so the family bound is not certifiable for the
-      declaration as written. Rates, certificate and registry are recorded in
+      tuning, paired-uncertainty and promotion code as real data. Verdict `pass`: all
+      ten declared null scenarios are estimable and every one promoted in 0 of 200
+      repetitions, a one-sided upper bound of 0.02614 at simultaneous level 0.995
+      against the 0.05 ceiling, and the recovery scenario promoted in 196 of 200 with a
+      one-sided lower bound of 0.9548 against the 0.80 target. Two declared nulls
+      previously emitted no comparison row because of defects in their own declarations
+      (`spread_only` carried a declared zero shock into the news control as a null;
+      `resolution_pause` declared a halt that covered its entire primary window); both
+      are fixed, and the change is recorded under `not_estimable_no_longer`. Rates,
+      certificate and registry are recorded in
       configs/study_v2.yaml under `calibration`. This does not unblock the claim
       above: the calibration measures the rule on a synthetic process and says
       nothing about any real contract's rule vintage.

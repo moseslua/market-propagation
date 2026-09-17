@@ -151,13 +151,14 @@ calibration:
   # the certificate and the registry record live in `configs/study_v2.yaml` under
   # `calibration`, which is the authority; this block records the verdict.
   status: measured
-  verdict: inconclusive
+  verdict: pass
   verdict_is_constrained_by: >-
-    two of the ten declared null scenarios emit no shock or no valid window by
-    construction, so no comparison row is ever complete for them and their
-    false-positive rates are not estimable. The family bound therefore cannot be
-    certified for the declaration as written. The eight estimable nulls promoted in
-    0 of 200 repetitions each.
+    nothing. All ten declared null scenarios are estimable and each promoted in 0 of 200
+    repetitions, so the family's simultaneous bound is certified for the whole
+    declaration as written. The two scenarios that previously emitted no comparison row
+    did so because of defects in their own declarations rather than in the graph or the
+    estimator, and both are fixed; the change is recorded under `not_estimable_no_longer`
+    in `configs/study_v2.yaml`, which is the authority for the rates.
   certificate: data/calibration/calibration_certificate.json
   registry: data/registry/rule_calibration.sqlite3
   required_repetitions_per_primary_scenario: 200

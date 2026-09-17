@@ -25,7 +25,8 @@ and no replication cohort.
 | Archived-response replay | `data/public/delivery-audit/` | Offline replay of previously archived real HTTP responses | Real, re-verified |
 | External history configuration | `configs/external_history_v1.yaml` | Names every archive layer, the extraction bounds, clock mode, age caps, horizons and masking rules | Configuration |
 | Kalshi trades | `data/external/kalshi-trades/trades-*.parquet` | 16 shards, 154,505,005 trade rows, 2021-06-30 through 2026-01-29 UTC | Real, acquired, CC-BY-4.0 |
-| Kalshi market metadata | `data/external/kalshi-trades/markets-*.parquet` | 4 shards, 17,464,713 snapshot rows | Real, acquired, retrospective metadata only |
+| Kalshi market metadata, vendor archive | `data/external/kalshi-trades/markets-*.parquet` | 4 shards, 17,464,713 snapshot rows. Layer `kalshi_markets`, one of the two declared observation paths for the contract universe rather than its sole source | Real, acquired, retrospective metadata only |
+| Kalshi market metadata, own live capture | `data/external/kalshi-own/markets/markets-*.parquet` | 1 shard. Layer `kalshi_own_markets`, the second declared observation path; capture began 2026-09-16 | Real, locally captured public data |
 | Polymarket v1 | `data/external/polymarket-v1/` | `OrderFilled` (1,201,580,990 raw fills), `daily_aligned` (601,934,424 cleaned Standard Binary rows), `daily_aligned_multi` (144,175,988 cleaned Neg Risk rows), `CTF` (838,688,922 lifecycle records) | Real, acquired, CC-BY-4.0 |
 | Forecast snapshots | `data/external/forecast-snapshots-kalshi_events-768472771c/snapshot_dataset.parquet` | 20,259 rows, 738 distinct markets, 102 snapshot dates, 2025-01-01 through 2025-10-31 | Real, low-frequency examples, MIT |
 
@@ -110,8 +111,10 @@ contracts cannot be called representative of the candidate set.
 
 ## External historical archives
 
-The four external layers were measured locally rather than taken from their
-READMEs, and three findings change how they may be used.
+The four external archive layers were measured locally rather than taken from their
+READMEs, and three findings change how they may be used. The live capture layer
+`kalshi_own_markets` is this repository's own acquisition rather than an external
+archive, and it is measured below with the candidate universe.
 
 **Kalshi trade shards are not time partitions.** The dataset README states the 16
 shards are sorted by `created_time`, which reads as a calendar partition. They are
@@ -137,14 +140,15 @@ agrees with the documented rule (`outcome_seq == 1 -> price`, else `1 - price`).
 loader recomputes and validates the event axis anyway, and derives nothing from
 `winning_outcome_label` or `resolution_status`.
 
-**What is quarantined.** The Kalshi market metadata layer's `status`, `result`,
-`yes_bid`/`yes_ask`, `last_price`, `volume` and `open_interest` are retrospective
-with no receipt record, so none may become a historical feature and no metadata
-fetch date is asserted. Its `created_time` is a snapshot time on heterogeneous
-batches, not a market lifetime: `markets-0001.parquet` covers a single day. The
-forecast snapshots' `community_pred_*` columns, resolution flags and `resolution`
-are future labels, all 20,259 `model_pred_now` values are null, and the layer is
-kept as a separate low-frequency example set outside the intraday panel.
+**What is quarantined.** The vendor archive's market metadata layer
+(`kalshi_markets`) carries `status`, `result`, `yes_bid`/`yes_ask`, `last_price`,
+`volume` and `open_interest` that are retrospective with no receipt record, so none
+may become a historical feature and no metadata fetch date is asserted for that
+layer. Its `created_time` is a snapshot time on heterogeneous batches, not a market
+lifetime: `markets-0001.parquet` covers a single day. The forecast snapshots'
+`community_pred_*` columns, resolution flags and `resolution` are future labels, all
+20,259 `model_pred_now` values are null, and the layer is kept as a separate
+low-frequency example set outside the intraday panel.
 
 **What these archives do not contain.** No layer holds order-book snapshots,
 quotes, cancellations or resting depth, so spread, depth and quote-coherence
@@ -159,10 +163,20 @@ in an artifact rather than inferred, and each one narrows what this data can car
 *The declared policy series are four, and the candidate universe is declared per
 release.* `FED`, `FEDDECISION`, `KXFED`, `KXFEDDECISION` — 689 contracts in total.
 A contract is a candidate for a release when its own recorded listing interval
-covers the release instant, which is pre-event information only. Measured over the
-ten development releases: **785 declared release-contract pairs**, of which 697
-never traded in the window. The grid is the denominator, so an untraded contract
-keeps its masked rows.
+covers the release instant, which is pre-event information only. The universe is the
+union of the two declared observation paths, `kalshi_own_markets` and
+`kalshi_markets`, never their intersection: a contract either path observed is a
+candidate, and membership is not conditioned on presence in the vendor archive. Each
+row carries which path or paths observed it, as `archived_only`, `live_only` or
+`archived_and_live`. Measured on this checkout the 689 split **526 `archived_only`,
+0 `live_only`, 163 `archived_and_live`**. The zero `live_only` count is why the
+change is inert for the retrospective 2025 cohort while remaining necessary for a
+forward window the vendor archive cannot cover.
+`src/market_propagation/ingest/kalshi_universe.py` is the single definition of this
+universe and decides no eligibility; the membership rule above is unchanged and was
+already observation-source agnostic. Measured over the ten development releases:
+**785 declared release-contract pairs**, of which 697 never traded in the window.
+The grid is the denominator, so an untraded contract keeps its masked rows.
 
 *The exposure graph is built over real contracts, and the blocker is rule
 evidence.* `neighbors.build_neighbor_graph` now requires a calendar declared

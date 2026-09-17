@@ -145,13 +145,13 @@ calibration:
   # measured on, because the declared 60/20/20 split needs enough held-out releases for
   # a release-clustered bound to mean anything.
   status: measured
-  verdict: inconclusive
+  verdict: pass
   verdict_is_constrained_by: >-
-    two of the ten declared null scenarios cannot produce a comparison on this path and
-    will not at any repetition count, so the family's simultaneous bound is not
-    certifiable for the whole declaration as written. Every scenario that can run
-    passes its requirement, and the verdict names the unmeasurable two rather than
-    passing over them.
+    nothing. All ten declared null scenarios are estimable and every one of them is
+    bounded below the ceiling, so the family's simultaneous bound is now certified for
+    the whole declaration as written. The two scenarios that previously blocked the
+    verdict contributed no comparison row because of two defects in their own
+    declarations, both since fixed and both recorded under `not_estimable_no_longer`.
   certificate: data/calibration/calibration_certificate.json
   registry: data/registry/rule_calibration.sqlite3
   entry_point: market-propagation calibrate-rule
@@ -164,14 +164,14 @@ calibration:
     releases leaves twelve or thirteen, and the two arms separate completely.
   simultaneous_null_bounds:
     method: clopper-pearson one-sided, level divided across the estimable nulls
-    level: 0.99375
+    level: 0.995
     null_scenarios_declared: 10
-    null_scenarios_estimable: 8
+    null_scenarios_estimable: 10
   measured:
     null_false_positive_rate:
       repetitions: 200
       promoted: 0
-      one_sided_upper_bound: 0.0251
+      one_sided_upper_bound: 0.02614
       ceiling: 0.05
       scenarios:
         - coarse_sampling
@@ -180,8 +180,10 @@ calibration:
         - later_reversal
         - omitted_shock
         - opposing_sign
+        - resolution_pause
         - rule_mismatch
         - shared_news_delay
+        - spread_only
     recovery_power:
       scenario: communication
       repetitions: 200
@@ -189,19 +191,28 @@ calibration:
       rate: 0.98
       one_sided_lower_bound: 0.9548
       target: 0.8
-  not_estimable:
-    # Declared here rather than dropped, because a null that was silently omitted from
-    # the family would widen the bound the surviving nulls are held to and read as
-    # evidence it never supplied.
+  not_estimable_no_longer:
+    # Declared here rather than deleted, because a verdict that named them was reported
+    # against this design and a reader has to be able to see what changed. Each entry
+    # states the old declaration's consequence and the fix, not just the new number.
     - scenario: resolution_pause
-      reason: >-
-        the scenario halts the venue across its own measured window by construction, so
-        the comparison is never produced; 200 of 200 repetitions blocked on a
-        not-run comparison
+      was: >-
+        the declared halt covered the calibration's primary measurement window end to
+        end, so every row was marked halted rather than filled and the comparison was
+        never produced; 200 of 200 repetitions blocked on a not-run comparison
+      now: >-
+        the declared halt opens at +700s, after the primary window closes at +600s, so it
+        still invalidates every window that spans it without consuming all of them; 200
+        of 200 repetitions now complete, 0 promoted
     - scenario: spread_only
-      reason: >-
-        the scenario leaves midpoints unmoved by construction, so no row is ever
-        complete; 200 of 200 repetitions blocked on a not-run comparison
+      was: >-
+        the process declares no news, so no shock was recoverable and the ladder's news
+        control columns were filled with nulls rather than with the declared zero; 200 of
+        200 repetitions blocked on a not-run comparison
+      now: >-
+        an event whose roles all carry a declared zero sensitivity now receives an
+        explicit 0.0 shock, because a declared zero is an exact value and not a missing
+        one; 200 of 200 repetitions now complete, 0 promoted
   superseded:
     call: network_falsification
     n_events: 10

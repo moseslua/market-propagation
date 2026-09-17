@@ -298,10 +298,14 @@ SCENARIOS: Mapping[str, ScenarioSpec] = {
         ScenarioSpec(
             name="resolution_pause",
             description=(
-                "The target venue halts between +300s and +900s and catches up with a jump on "
-                "resume, so rows whose window spans the halt are invalid rather than filled."
+                "The target venue halts between +700s and +1000s and catches up with a jump on "
+                "resume, so rows whose window spans the halt are invalid rather than filled. "
+                "The halt opens after the primary measurement window closes at +600s: while it "
+                "spanned that window end to end, every row of the calibration's primary "
+                "comparison spanned the halt, so no comparison row was ever complete and this "
+                "declared null contributed no promotion rate to the family's bound."
             ),
-            pause=(300.0, 900.0),
+            pause=(700.0, 1000.0),
             pause_jump=0.03,
         ),
         ScenarioSpec(

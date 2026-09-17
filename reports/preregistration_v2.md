@@ -146,6 +146,19 @@ No post-release quantity and no post-release activity selects the universe. A
 candidate that only traded after the release is recorded as such and counted
 separately.
 
+**Addendum, 17 September 2026 — which observation paths "recorded" is read from.** The
+rule above is unchanged and is deliberately observation-source agnostic: it names a series
+and a listing interval, and no path. Its implementation had narrowed "recorded" to
+"recorded in the vendor archive", and the universe is now read as the **union** of the two
+declared observation paths — `kalshi_own_markets` (this repository's own capture) and
+`kalshi_markets` (the vendor archive). A contract either path observed is a candidate, and
+membership is never conditioned on presence in the vendor archive. This is a conformance
+fix rather than an estimand change, which is why it is an addendum and not an edit to the
+clause above. The retrospective arm's population is unaffected: measured on this checkout,
+0 of 689 contracts are `live_only`. The forward arm's declared universe would have been
+empty without it, because the vendor archive's rows end 2026-01-29 while every forward
+release falls after that. Recorded in `reports/population_change_d2.md`.
+
 ## 3. The exposure graph, declared before the releases
 
 An edge runs from a donor to a receiver and exists only when all of the following
@@ -214,17 +227,35 @@ transaction tapes passed through the same graph, observation, feature, fitting,
 tuning, paired-uncertainty and promotion code as real data**, at 200 repetitions per
 primary scenario, with simultaneous null bounds.
 
-**The calibration has run, and its verdict is `inconclusive`.** Of the ten declared
-null scenarios, eight are estimable and promoted in **0 of 200 repetitions each**, a
-one-sided upper bound of 0.0251 at simultaneous level 0.99375 against the 0.05
-ceiling. The recovery scenario `communication` promoted in 196 of 200, a rate of 0.98
-with a one-sided lower bound of 0.9548 against the 0.80 target. The verdict is not a
-pass because `resolution_pause` and `spread_only` emit no complete comparison row by
-construction and so have no estimable rate; the family bound is therefore not
-certified for the declaration as written, and the run reports the two unestimable
-nulls rather than dropping them. Certificate
+**The calibration has run, and its verdict is `pass`.** All ten declared null
+scenarios are estimable and promoted in **0 of 200 repetitions each**, a one-sided
+upper bound of 0.02614 at simultaneous level 0.995 against the 0.05 ceiling. The ten,
+sorted, are `coarse_sampling`, `dropped_messages`, `heterogeneous_sensitivity`,
+`later_reversal`, `omitted_shock`, `opposing_sign`, `resolution_pause`, `rule_mismatch`,
+`shared_news_delay` and `spread_only`. The recovery scenario `communication` promoted
+in 196 of 200, a rate of 0.98 with a one-sided lower bound of 0.9548 against the 0.80
+target.
+
+The first run recorded two of those nulls — `resolution_pause` and `spread_only` — as
+having no comparison row at all, blocking 200 of 200 repetitions each and leaving the
+family bound uncertifiable. Both causes were defects in the scenarios' own
+declarations, not in the estimator, the bound or the promotion rule, and both are
+fixed. `spread_only` declares `news_active=False`, so every contract's declared
+sensitivity is zero; `simulated_release_shocks` recovered the generator's per-release
+common shock as `latent / (orientation * strength)` and skipped any event whose
+strength was falsy, so it returned an empty mapping, the ladder's `shock` and
+`delayed_shock` columns were filled with nulls, and `nested_comparison` found no
+complete row. An event whose roles all carry a declared zero sensitivity now receives
+an explicit `0.0` shock, because a declared zero is an exact value and not a missing
+measurement. `resolution_pause` declared `pause=(300.0, 900.0)` while the declared
+forecast settings are `forecast_origin_seconds=300` and `future_horizon_seconds=300`,
+so every primary row's window is `[event+300s, event+600s]` — entirely inside that
+halt. Every row was therefore marked halted and its target was null. The declared halt
+is now `(700.0, 1000.0)`, which opens after the primary window closes at +600s, so the
+halt still invalidates every window that spans it without consuming all of them. No
+estimator, bound or promotion rule changed. Certificate
 `data/calibration/calibration_certificate.json`; registry record
-`calibration-2856211b642d-fadcc9c34813`.
+`calibration-2856211b642b-bd7e5e807f5c`.
 
 The earlier 48-repeat `falsification.network_falsification` call is recorded in the v2
 configuration as superseded and insufficient: it counts a gain-threshold event on the
@@ -244,7 +275,7 @@ other, and the two arms are never pooled into one figure.
 | Information diffuses between policy-rate contracts | retrospective `core_2025h1` | not claimed: 623 structurally admissible edges are withheld by the rule-vintage requirement, and the news vector is absent |
 | The release moves its own market (absorption) | forward `forward_2026h2` | not claimed, and nothing is estimable yet: no release in this arm has published, so it has no panel rows at all. Its blocker is the calendar, not the evidence |
 | Information diffuses between policy-rate contracts | forward `forward_2026h2` | not claimed: no release in this arm has published, and its rule vintage is certifiable only by a capture taken before each release instant |
-| The decision rule's false-positive rate or power | neither `arm`; synthetic process | measured on a synthetic process only: 8 of 10 nulls at 0 of 200 repetitions each, recovery 196 of 200, verdict `inconclusive`; not claimed for any real release or contract, in either arm |
+| The decision rule's false-positive rate or power | neither `arm`; synthetic process | measured on a synthetic process only: 10 of 10 nulls at 0 of 200 repetitions each, recovery 196 of 200, verdict `pass`; not claimed for any real release or contract, in either arm |
 | Anything about what a live participant knew | both arms | not claimed: source-time alignment is retrospective |
 
 ## 9. Blocking prerequisites, named exactly
@@ -281,5 +312,5 @@ other, and the two arms are never pooled into one figure.
    source than a release in the past, and a forward release's forecast must be captured
    before its own instant to be admissible at all.
 3. **The transaction-tape calibration** at 200 repetitions per primary scenario. Run
-   and reported in section 7; it no longer blocks, though its verdict stays
-   `inconclusive` until a majority of its declared nulls are estimable.
+   and reported in section 7; it no longer blocks, and its verdict is a `pass` with
+   all ten declared nulls estimable.

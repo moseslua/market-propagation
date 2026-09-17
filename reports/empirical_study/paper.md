@@ -11,7 +11,7 @@ completed execution, not a completed empirical result.
 | Data eligibility | **blocked**: no candidate contract carries an attested rule-vintage interval |
 | Candidate universe | declared: 785 release-contract pairs, 697 of which never traded, all kept in the denominator |
 | Exposure graph | built over 155 real contracts; 0 edges; 623 edges structurally admissible and withheld by the rule-vintage requirement alone |
-| Calibration | run at 200 repetitions: 8 of 10 declared nulls at 0 promoted of 200 each, recovery 196 of 200, verdict `inconclusive` because two nulls are not estimable |
+| Calibration | run at 200 repetitions: 10 of 10 declared nulls at 0 promoted of 200 each, recovery 196 of 200, verdict `pass` |
 | Empirical evaluation | not performed: the primary panel has no valid row |
 | Scientific conclusion | none claimed |
 
@@ -231,7 +231,7 @@ column, and no rung was reported complete.
 
 ## 5. Calibration of the implemented decision rule
 
-**Run, and `inconclusive`.** The declared calibration is 200 repetitions per primary
+**Run, and `pass`.** The declared calibration is 200 repetitions per primary
 scenario, with simulated transaction tapes passed through the same graph,
 observation, feature, fitting, tuning, paired-uncertainty and promotion code as real
 data, and simultaneous null bounds over the declared primary null scenarios. It has
@@ -241,20 +241,29 @@ promotion path produced.
 | Quantity | Value |
 | --- | --- |
 | Declared null scenarios | 10 |
-| Estimable nulls | 8, promoted in 0 of 200 repetitions each |
-| Null one-sided upper bound, simultaneous level 0.99375 | 0.0251 against a 0.05 ceiling |
-| Recovery `communication` | 196 of 200 promoted, rate 0.98, one-sided lower bound 0.9548 against a 0.80 target |
-| Verdict | `inconclusive` |
+| Estimable nulls | 10, promoted in 0 of 200 repetitions each |
+| Null one-sided upper bound, simultaneous level 0.995 | 0.02614 against a 0.05 ceiling |
+| Recovery `communication` | 196 of 200 promoted, rate 0.98, one-sided lower bound 0.9548 against an 0.80 target |
+| Verdict | `pass` |
 
-The verdict is inconclusive rather than pass because `resolution_pause` and
-`spread_only` are not estimable at any repetition count, and a family bound cannot be
-certified over a declaration two of whose nulls contribute no rate. `spread_only`
-declares that the latent value does not move, so no shock is recoverable and the
-nested comparison has no complete row; `resolution_pause` halts the venue across its
-own measured window, so its rows are invalid rather than filled. Each blocked 200 of
-200 repetitions on a not-run comparison. The run reports both rather than dropping
-them, since dropping them would have widened the bound the surviving nulls are held
-to and read as evidence they never supplied.
+All ten declared nulls are estimable and the verdict carries no reason. Two of them
+previously contributed no comparison row at all, blocking 200 of 200 repetitions and
+leaving the family bound uncertifiable; both causes were defects in the scenarios' own
+declarations, and both are fixed. `spread_only` declares `news_active=False`, so every
+contract's sensitivity is 0, and `simulated_release_shocks` — which recovered the
+generator's per-release common shock as `latent / (orientation * strength)` and skipped
+any event whose strength was falsy — returned an empty mapping, leaving the ladder's
+`shock` and `delayed_shock` columns null and `nested_comparison` with no complete row; an
+event whose roles all carry a declared zero sensitivity now receives an explicit `0.0`
+shock, because a declared zero is an exact value and not a missing measurement.
+`resolution_pause` declared `pause=(300.0, 900.0)` while the calibration's declared
+forecast settings are `forecast_origin_seconds=300` and `future_horizon_seconds=300`, so
+every primary row's window `[event+300s, event+600s]` fell entirely inside the halt and
+every target was null; the declared halt is now `(700.0, 1000.0)`, which opens after the
+primary window closes at +600 s, so the halt still invalidates every window that spans it
+without consuming all of them. Certificate:
+`data/calibration/calibration_certificate.json`; registry record
+`calibration-2856211b642b-bd7e5e807f5c`.
 
 This certifies the behaviour of the decision rule on a declared synthetic process,
 and nothing more: it is not a finding about any real venue, release or contract, and
@@ -317,7 +326,7 @@ Reported, including the analyses that could not be run.
 | Reversed-edge diagnostic | **not run**: no edge exists in either direction |
 | Leave-one-release-out | **not run**: no fitted primary estimate |
 | Placebo releases matched on time of day | **not run**: no fitted primary estimate |
-| Multi-null Bonferroni certificate | run inside the calibration; simultaneous level 0.99375 over 8 estimable nulls |
+| Multi-null Bonferroni certificate | run inside the calibration; simultaneous level 0.995 over 10 estimable nulls |
 | Transaction observation process | run; the calibration's tapes pass through the declared transaction observation path |
 
 The reversed-edge analysis is a diagnostic rather than a null, because feedback and
@@ -338,9 +347,10 @@ Requirements, in the order that matters. None is a coding task.
 2. **A point-in-time expectation source** covering the declared news vector
    (`cpi_headline_sa_mom_pct`, `payrolls_change_thousands`) for each release.
 3. **The transaction-tape calibration** at 200 repetitions per primary scenario. Run;
-   see section 5. Its verdict stays `inconclusive` until a majority of its declared
-   nulls are estimable, which is a property of the simulated scenarios rather than of
-   the archive.
+   see section 5. All ten declared nulls are now estimable and the verdict is a `pass`,
+   closed by correcting two declared scenario definitions — a property of the simulated
+   scenarios rather than of the archive. It remains a calibration on a synthetic process
+   and makes no claim about any real contract or release.
 4. **More releases.** Ten releases cannot carry a confirmatory claim: the earlier
    calibration call's power figure of 0.44 against a 0.80 target says so, and the
    declared grid's 0.042 observed fraction leaves most cells unobserved. The
@@ -414,7 +424,7 @@ chronological holdout is not a registry reservation and is not counted as one.
 | The primary panel is blocked for want of rule evidence | supported | 0 of 785 `rule_verified_pairs`, 0 valid rows |
 | The news rung is unestimable | supported | `expectation_source_is_absent`, `reports/source_feasibility.md` |
 | The ladder is blocked rather than fitted on a substitute | supported | four blocked rungs with named columns |
-| The decision rule is calibrated on a synthetic process, with an inconclusive verdict | supported | 8 of 10 nulls at 0 of 200; recovery 196 of 200; two nulls not estimable; `calibration.status: measured` in `configs/study_v2.yaml` |
+| The decision rule is calibrated on a synthetic process, with a `pass` verdict | supported | 10 of 10 nulls at 0 of 200; upper bound 0.02614 at level 0.995 against a 0.05 ceiling; recovery 196 of 200, lower bound 0.9548 against an 0.80 target; `calibration.status: measured` in `configs/study_v2.yaml` |
 | Absorption responds to the release | **not claimed** | exploratory only, degenerate |
 | Information diffuses between policy-rate contracts | **not claimed** | no admissible edge |
 

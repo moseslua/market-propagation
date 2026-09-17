@@ -83,7 +83,7 @@ other row is met.
 | D4 | Cross-venue matched instrument live at a declared release instant | B | **absent** — 0 of 10 |
 | D5 | (a) Second distinct perp build | D | **(a) satisfied** — 17 builds, 43 assets |
 | D5 | (b) Observable execution-cost layer | D | **absent** — not observable from this source |
-| D6 | Estimable declared null scenarios | calibration verdict | **partial** — 8 of 10 |
+| D6 | Estimable declared null scenarios | calibration verdict | **satisfied** — 10 of 10 estimable, verdict `pass` |
 | D7 | More releases, and observed endpoints on declared pairs | power for any confirmatory claim | **insufficient** — 33 of 785 endpoints at h=300 s |
 | D8 | A confirmatory sample | the two claims of interest | **not claimable** — exploratory only, degenerate |
 
@@ -162,16 +162,40 @@ live listing and `attest-rules` emitted **163 records for 163 live contracts** a
 four declared series, each with `in_force_from` equal to the instant the serving system
 stated and `in_force_to: null`, **0 refusals, 326 captures held**. Every one of those
 records refuses the 2025 windows — correctly, by construction. The gap is not the
-mechanism but the overlap: the graph's contract universe is built from the archived 2025
-parquet shards, which do not contain the contracts that were captured.
+mechanism but the overlap, and on this checkout the union does not move it: the captured
+contracts are already archived ones, so the union and the archive-only read coincide over
+the retrospective cohort, and what the capture can certify is still a window after the
+archive's own last row.
 
-**Two consequences to settle before D1 can deliver for the studied cohort.**
+**Two consequences before D1 can deliver for the studied cohort.**
 
-1. The universe must be able to include contracts observed live, or the observation
-   cadence must run far enough ahead of a future cohort that the archived universe and the
-   observed universe intersect. **This one is left open deliberately.** Admitting
-   live-observed contracts changes which contracts the study is about, so it is a cohort
-   decision for the study owner rather than a wiring change to make quietly.
+1. **The universe now includes contracts observed live. Settled, and wired rather than
+   deferred.** The contract universe is the union of the two declared observation paths —
+   `kalshi_own_markets`, this repository's own capture of the venue's live listing, and
+   `kalshi_markets`, the vendor archive — defined once in
+   `src/market_propagation/ingest/kalshi_universe.py` and read from there by the graph
+   builder, the study and forecast panels, the cross-venue matcher and the CLI.
+
+   It was not done quietly, because it is not a change of population: the membership rule
+   the preregistration already declares — a contract is a candidate when its series is one
+   of the four declared policy series and its own recorded listing interval covers the
+   release instant — is observation-source agnostic, so the archive-only implementation had
+   been **narrower than the frozen declaration**. The union is an
+   implementation-conformance fix, and that is why the retrospective arm's declared
+   population does not move.
+
+   Measured on this checkout, the union holds **689 contracts**, split **526
+   `archived_only`, 0 `live_only`, 163 `archived_and_live`**. The zero `live_only` count is
+   why the change is currently inert for the retrospective 2025 cohort. It is not inert
+   forward: the vendor archive's rows end 2026-01-29, so the forward arm's windows can only
+   be covered by this repository's own capture, and under an archive-only universe those
+   windows would have no candidate contracts at all.
+
+   A contract observed through either path is a candidate. Each row carries which path or
+   paths observed it, membership is never conditioned on presence in the vendor archive,
+   and the module decides no eligibility of its own, so `study_eligible` and the
+   rule-vintage gate are unchanged. The cohort decision itself is recorded in
+   `reports/population_change_d2.md`.
 2. The graph's loader now admits a record whose `in_force_to` is null, so the
    `"in_force_to": null` shape this pipeline writes is read as an open end. A field named
    in that module's `OPEN_ENDED_RECORD_FIELDS` must still be *stated*; an absent end is
@@ -341,26 +365,49 @@ here, and more collection does not help there.
 promotion rate, so a family-wise simultaneous bound can be certified over them.
 
 **Measured state (carried forward).** The calibration ran at exactly the declared design
-and returned **`inconclusive`**, not `pass`.
+and returned **`pass`**, with an empty `verdict_reasons` list. The design dependency is
+**closed** by changing the declared scenario definitions themselves: all ten nulls are now
+estimable, and each contributes a complete nested comparison row.
 
 | Quantity | Value |
 | --- | --- |
 | Repetitions per primary scenario | 200 |
 | Releases per repetition | 120 |
-| Declared nulls / estimable nulls | 10 / **8**, each promoted **0 of 200** |
-| Null one-sided upper bound, simultaneous level 0.99375 | **0.0251** against a 0.05 ceiling |
+| Bootstrap samples / base seed | 200 / `20260913` |
+| Declared nulls / estimable nulls | 10 / **10**, each promoted **0 of 200** |
+| Null one-sided upper bound, simultaneous level 0.995 | **0.02614** against a 0.05 ceiling |
 | Recovery `communication` | **196 of 200**, rate 0.98, lower bound 0.9548 against an 0.80 target |
-| Verdict | **`inconclusive`** |
+| Verdict | **`pass`** |
 
-Two declared nulls are **not estimable at any repetition count**: `spread_only` declares
-the latent value does not move, so no shock is recoverable; `resolution_pause` halts the
-venue across its own measured window, so its rows are invalid rather than filled. Each
-blocked **200 of 200** repetitions. The run reports both rather than dropping them,
-because dropping them would widen the bound the surviving nulls are held to.
+Certificate: `data/calibration/calibration_certificate.json`; registry record
+`calibration-2856211b642b-bd7e5e807f5c`. The ten estimable nulls, sorted:
+`coarse_sampling`, `dropped_messages`, `heterogeneous_sensitivity`, `later_reversal`,
+`omitted_shock`, `opposing_sign`, `resolution_pause`, `rule_mismatch`,
+`shared_news_delay`, `spread_only`.
 
-**Where to get it.** Nowhere — this is a **design** dependency, not an acquisition. What
-must change is the declared scenario definitions, so each contributes a complete nested
-comparison row.
+Two declared nulls previously produced **no comparison row at all**, blocking 200 of 200
+repetitions and leaving the family bound uncertifiable. Both causes were defects in the
+scenarios' own declarations, and both are fixed:
+
+1. **`spread_only`** declares `news_active=False`, so every contract's sensitivity is 0.
+   `simulated_release_shocks` recovered the generator's per-release common shock as
+   `latent / (orientation * strength)` and skipped any event whose strength was falsy, so
+   it returned an **empty mapping**; the ladder's `shock` and `delayed_shock` columns were
+   then filled with nulls and `nested_comparison` found no complete row. An event whose
+   roles all carry a declared zero sensitivity now receives an explicit `0.0` shock,
+   because a declared zero is an exact value and not a missing measurement.
+2. **`resolution_pause`** declared `pause=(300.0, 900.0)`. The calibration's declared
+   forecast settings are `forecast_origin_seconds=300` and `future_horizon_seconds=300`,
+   so every primary row's window is `[event+300s, event+600s]` — entirely inside that
+   halt, which marked every row halted with a null target. The declared halt is now
+   `(700.0, 1000.0)`, which opens after the primary window closes at +600 s, so the halt
+   still invalidates every window that spans it without consuming all of them.
+
+**Where to get it.** This dependency **no longer blocks**, and it was never an
+acquisition: it was a **design** dependency, closed by the declared scenario-definition
+changes above rather than by fetching anything. It remains a statement about the decision
+rule on a **synthetic process** — the calibration is not evidence about any real contract,
+release or venue, and it does not make the real graph estimable.
 
 ---
 
@@ -453,7 +500,9 @@ answering.
   confirmatory claim without D7's power.
 - **D5(a) is now satisfied and D5(b) is not**, and they are independent of D1–D4, D6 and
   D7 in both directions.
-- **D6 is a design dependency**, not a data one.
+- **D6 is a design dependency**, not a data one — and it is now **satisfied**: all ten
+  declared nulls are estimable and the calibration verdict is a `pass`. It remains a
+  statement about the rule on a synthetic process, not evidence about any contract.
 - **D8 is not satisfiable.** It states that the two claims stay unclaimed even with D1, D3
   and D7 met.
 

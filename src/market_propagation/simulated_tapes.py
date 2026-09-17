@@ -554,6 +554,12 @@ def simulated_release_shocks(
                 continue
             shocks[str(event_id)] = latent / (orientation * float(strength))
             break
+        else:
+            # No role of this release carries a declared sensitivity, so the process
+            # declares no common news for it. That is an exact zero rather than a missing
+            # measurement: the news control column has to carry it as ``0.0`` so the
+            # comparison still has a row, and a null has to keep meaning absence.
+            shocks[str(event_id)] = 0.0
     return shocks
 
 
