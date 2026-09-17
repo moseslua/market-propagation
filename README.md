@@ -566,12 +566,42 @@ inconclusive result as a positive one.
 
 ## Scheduled reports
 
-No scheduler, cron entry, or service is installed by this repository, and no job
-is deployed. `configs/scheduled-reports.cron` is a configuration artifact that is
+Installing the package does not install a scheduler. `configs/scheduled-reports.cron` is a configuration artifact that is
 ready to adapt: it is configured for this checkout, with the project root and the
 `uv` binary at their absolute paths and the raw store set to
 `data/public/final-audit/raw`. Change those path variables to reuse it elsewhere.
 Read the setup steps at the top of that file before you add its entries.
+
+The prospective acquisition coordinator is available separately:
+
+```bash
+uv run --no-sync python scripts/collect_prospective_evidence.py --once
+uv run --no-sync python scripts/collect_prospective_evidence.py --report
+uv run --no-sync python scripts/collect_prospective_evidence.py --loop
+```
+
+`configs/evidence_acquisition_v1.yaml` sets daily rule capture, attestation and
+Polymarket metadata capture at 06:41 host time, and a monthly 35-day market/trade
+capture at 06:47 host time on day 1. It stores attempts, verified observation
+manifests, failures and scheduler cycles under `data/prospective/acquisition/`.
+Rule captures are under `data/prospective/rules/`. Each market attempt has its own
+shard directory; recapture cannot replace an earlier attempt. These are acquisition
+artifacts and are not automatically substituted into a frozen analysis.
+
+On Moses's checkout, the authorized service was installed on 17 September 2026 as
+`~/Library/LaunchAgents/local.information-diffusion.prospective.plist`, label
+`local.information-diffusion.prospective`. Inspect it with
+`launchctl print gui/$(id -u)/local.information-diffusion.prospective`; logs are in
+`logs/prospective-collector{,.err}.log`. The service resumes after user login and
+restarts on exit. It cannot collect while the machine is asleep or offline. Do not
+also install the cron capture entries against these output roots.
+
+`--once` exits 2 for blocked, backoff or exhausted jobs. Inspect the associated
+receipt before retrying. A slot has a bounded retry count; the next daily or monthly
+slot is independent. Release-window quote sampling and browser-only BLS page
+acquisition still need their own event-specific capture, as described below.
+See [the acquisition results and research directions](reports/future_research_directions.md)
+for evidence, replay commands, and unresolved scientific inputs.
 
 Two report entries are active and the capture template at the bottom is disabled.
 Merge the active entries into your own crontab rather than replacing it, so

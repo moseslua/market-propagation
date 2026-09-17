@@ -1,10 +1,36 @@
 # Empirical dependencies
 
-Date: 17 September 2026. Refreshed from a full end-to-end run.
+Date: 17 September 2026. Acquisition follow-through added after the full end-to-end run.
 
 This file lists the **external inputs the studies require and cannot produce from what is
 already on this checkout**. It is a dependency ledger, not a plan, not a result, and not
 evidence about any contract, release or venue.
+
+## Acquisition follow-through
+
+The persistent local collector completed a real cycle: 163 rule captures and
+attested contracts, 9,784 Polymarket metadata records, and 163 market rows with
+61,013 trades. Receipts and raw-byte manifests are under
+`data/prospective/acquisition/`; rules are under `data/prospective/rules/`.
+The refreshed forward progress ledger covers 706 of 706 candidate windows across
+six future releases. All six releases remain pending publication. This is evidence
+of acquisition and rule-coverage prerequisites, not a confirmatory sample.
+
+| Dependency | Measured follow-through | Remaining limit |
+| --- | --- | --- |
+| D1/D2 historical | Queue retains 785 pairs, 107 contracts and 2,355 explicit field/interval gaps; current primary market, event, series and linked-document responses archived | 0 historical windows attested; exact discovered market/event URL archive probes returned HTTP 503 |
+| D3a | All 10 original BLS releases replay from verified raw bytes; five report revisions | ALFRED/FRED direct retrieval timed out; the alternate reader returned the form explanation, not a vintage export |
+| D3b | Public pages from Trading Economics, Investing.com, Econoday and Philadelphia Fed archived | No historical monthly consensus with demonstrable pre-release publication validated in this bounded probe |
+| D5(b) | Official Bybit fee tiers parsed from saved HTML; BTCUSDT depth and contract specifications acquired for Bybit and Binance | Binance fee pages were empty directly and verification pages through the alternate reader; account tier, region, effective intervals and future execution remain unverified |
+
+Source probes and their hashes are in `.audit/evidence-recovery/`,
+`.audit/evidence-acquisition/sources-20260917/`, `.audit/expectation-recovery/`, and
+`.audit/perp-cost-recovery/`. See [future research directions](future_research_directions.md)
+for replay commands and the precise conditional fee example. The existing protocol
+seal still verifies against all 31 covered files. No statistical gate was relaxed.
+
+The remaining tables below retain the earlier end-to-end snapshot. Their use of
+"fresh" refers to that run; the acquisition changes above are a separate observation.
 
 ## What this refresh re-measured, and what it carries forward
 
@@ -24,8 +50,8 @@ Two states moved, and one is material:
 | **D5 (a)** second distinct perp build | **absent** — 1 build, 24 assets | **satisfied** — 17 builds, 43 assets |
 | **D1** rule vintage for the studied cohort | absent — 0 of 785 | absent — 0 of 785 **(unchanged, reproduced)** |
 
-D5(b), the observable execution-cost layer, is **unchanged and cannot be moved by
-collection**.
+D5(b) cannot be completed from the PerpDexList source alone. The additional venue
+fee and depth observations above provide partial inputs, with named limits.
 
 ## The pipeline's own list of what is unmet
 
@@ -82,7 +108,7 @@ other row is met.
 | D3 | Point-in-time expectation source | news and network rungs (A, C) | **absent** — provider not present |
 | D4 | Cross-venue matched instrument live at a declared release instant | B | **partially satisfied** — the parser is written and reads 63 of 229 records with every component; 0 of 10 matched, because every readable pair is blocked on the first venue's unobserved components |
 | D5 | (a) Second distinct perp build | D | **(a) satisfied** — 17 builds, 43 assets |
-| D5 | (b) Observable execution-cost layer | D | **absent** — not observable from this source, and the venue fee schedule is unreadable from this egress (404 at one path, 429 twice at another) |
+| D5 | (b) Observable execution-cost layer | D | **partial** — Bybit base fees and both venue books/specifications acquired; Binance fees and execution assumptions remain unverified |
 | D6 | Estimable declared null scenarios | calibration verdict | **satisfied** — 10 of 10 estimable, verdict `pass` |
 | D7 | More releases, and observed endpoints on declared pairs | power for any confirmatory claim | **insufficient** — 33 of 785 endpoints at h=300 s; the declared schedule is now verified against the BLS calendar, the endpoint coverage is what remains |
 | D8 | A confirmatory sample | the two claims of interest | **not claimable** — exploratory only, degenerate |
@@ -125,8 +151,9 @@ record. It is named by configuration three ways:
 | `evidence_source` | `configs/cohort_v2.yaml` | `evidence_source_records_rule_versions: false`, `status: absent` |
 | `inputs.rule_evidence_source` | `configs/external_history_v1.yaml` | no version flag; absent evidence leaves a rule-covered candidate out of the primary cohort |
 
-**Where to get it (carried forward).** There is no retrospective source, and that is a
-measured result rather than an untested one. The live index is
+**Where to get it (carried forward).** No admissible retrospective source has been
+established by the bounded searches performed here. That is not a proof that no such
+source exists. The live index is
 `GET https://api.elections.kalshi.com/trade-api/v2/series/{TICKER}`, which returns a
 `contract_url` and a `contract_terms_url` per series. That yields two stable asset URLs
 per declared series:
@@ -140,9 +167,10 @@ A product-template document is versionless: **neither document states its own ef
 date**, so it cannot bound a contract-level window without a dated archive of the URL. The
 Wayback prefix queries `assets.kalshi.com/contract_terms/FED*` and
 `assets.kalshi.com/regulatory/product-certifications/FED*` were exhaustive and returned
-only a mention-type product and nothing respectively — a negative result, not a truncated
-page. Acquisition is therefore **forward-only**: a dated cadence over those URLs is the
-only route that can ever produce a record for a window the study has not yet passed.
+only a mention-type product and nothing respectively. Those results apply to the
+queried prefixes only. The later exact-URL market/event queries returned HTTP 503,
+which is an access failure. **Forward capture is the working route** on this checkout;
+historical recovery remains contingent on an admissible dated source.
 
 **Inadmissible substitutes** — refused by name: `open_time`, `close_time`, `created_time`,
 `updated_time`, `settlement_ts`, a capture instant, current rule text read after the
@@ -373,7 +401,7 @@ across builds for the assets held. That is a statement about **quoted** spreads 
 price levels. It is not a net return, not a cost estimate, not slippage, and not a
 capacity figure — see D5(b).
 
-## D5(b). An observable execution-cost layer — **not satisfiable by collection**
+## D5(b). An observable execution-cost layer — **partially observed**
 
 **Measured state (fresh).** Every differential carries the cost refusal:
 
@@ -394,17 +422,18 @@ The report's own claim limits, which are the load-bearing part:
 - the cost layer is not observable from this source, so **every spread here is a quoted
   spread and not an executable opportunity**
 
-This is the dependency **no amount of collection removes**. A second build arrives by
-waiting; a cost layer does not. What is missing is the fee side, which has to come from
-venue fee schedules; the depth side is partly present in the collected cross-section.
+PerpDexList collection alone cannot remove this refusal. The cost inputs must come
+from the relevant perpetual-futures venues; the previously cited Kalshi fee paths
+were unrelated to this dependency.
 
-**The fee source was probed this session and is not readable from this egress.**
-`docs.kalshi.com/getting_started/fee_schedule` returned HTTP **404**, and
-`kalshi.com/docs/kalshi-fee-schedule.pdf` returned HTTP **429** on two separate attempts. A
-rate limit is not the same finding as absence, and the retry is what makes this a statement
-about this client rather than about one moment: that host refuses this egress, and the fee
-schedule has to be read through another route. It remains the one input no amount of
-collection produces, so D5(b) stays open with a named prerequisite rather than a plan.
+The follow-through acquired Bybit's official base fee table and both venues'
+BTCUSDT depth/specifications. `replay_perp_cost_evidence.py` parses the saved table,
+checks contract and lot compatibility, and replays a matched 0.131 BTC quantity
+against each saved book. The known component is 11.0243659150 USDT, including
+10.9981659150 USDT of assumed Bybit VIP 0 taker fees, plus an unknown Binance fee.
+Books were fetched sequentially; exits, realized fills and account-specific rates
+were not observed. This is conditional frozen-book arithmetic, not a future-cost
+bound, executable opportunity, net return, or capacity estimate.
 
 **Independence.** Study D's blocker is unrelated to D1–D4. More rule work does not help
 here, and more collection does not help there.

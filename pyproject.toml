@@ -88,6 +88,7 @@ include = [
   "reports/literature_matrix.csv",
   "reports/contract_rule_registry.json",
   "reports/reproduction_guide.md",
+  "reports/future_research_directions.md",
   "reports/data_audit.md",
   "reports/data_card.md",
   "reports/paper.md",
