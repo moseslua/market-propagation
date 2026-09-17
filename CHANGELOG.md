@@ -14,6 +14,37 @@ cannot support.
 
 ### Added
 
+- **The second venue's payout grammar, and the acquisition that feeds it** —
+  `src/market_propagation/ingest/polymarket_predicates.py` and
+  `src/market_propagation/ingest/polymarket_markets.py`, 48 tests, the
+  `declared_second_venue_market_text` parser, and the `metadata_acquisition` block in
+  `configs/matching_v1.yaml`. Dependency D4 was recorded as *"a missing parser, not a
+  missing venue"*; the parser now exists, so that refusal is gone. It is a **separate
+  grammar rather than a widened first one**, because this layer never reads one venue's
+  text through another venue's grammar.
+  - The grammar reads the venue's own `question`, `description` and `groupItemTitle`,
+    and **never its slug**. The venue writes
+    `will-the-fed-decrease-interest-rates-by-50-bps-after-its-march-2024-meeting` for a
+    market whose rule pays on "50 *or more*", so a predicate read from a slug is wrong in
+    the direction that matters most. The slug is accepted only to name a contract in a
+    refusal message, and a test hands the grammar a slug-perfect record whose text fields
+    are unreadable and requires the refusal.
+  - A component the venue's text does not state is refused **by name**, never defaulted,
+    and a field that is silent about a component is not a contradiction. Two components
+    the first venue's path has to receive from its caller — `reference_period` and
+    `settlement_criterion` — are read here from the venue's own resolution wording, so the
+    second venue's readable records carry **every** component.
+  - The sweep holds one immutable record per `condition_id` under the page's own bytes in
+    a content-addressed archive, each carrying the instant the *serving* system stated and
+    never this run's clock. `GET /markets?condition_ids=` and `GET /markets?slug=` both
+    return `[]` for a settled market while the search route returns it in full, so the
+    route is declared and the empty ones are named as unusable rather than offered as
+    fallbacks.
+  - The refusals separate facts that were previously one: a record that omits a field, a
+    record that was never held, a settlement subject the venue's text does not state, two
+    of its own fields disagreeing on the strike, and a level whose yes side it never names
+    — none of which is resolved by picking the convenient field.
+
 - **Prospective rule capture** — the command `capture-rules`, the source kind
   `dated_observation_of_the_live_rule_text`, and `--emit-graph-records` on
   `attest-rules`. 4 tests. The command reads the venue's own live listing for each
@@ -140,6 +171,19 @@ cannot support.
 
 ### Changed
 
+- **The second venue's candidate is identified by its contract key, not its slug.**
+  `candidate_selection.second_venue` now declares `contract_identity_column: condition_id`
+  and a separate `slug_pattern_column: market_slug`, so a candidate is *selected* by the
+  name a reader recognizes and *identified* by the key its own records and the acquired
+  metadata are keyed by. They are two fields because a name and a key are different
+  things, and a lookup by name would be a lookup by the very field this layer refuses to
+  read a predicate from. A pattern that matches a name mapping to more than one key is
+  refused rather than resolved, because which contract was meant would otherwise be a
+  guess.
+  - Measured: the declared candidate universe is **unchanged at 229**, and the graded
+    denominator is **unchanged at 157,781 pairs**. That is the check that makes this a
+    conformance fix and not a population change.
+
 - **The candidate universe is read from both observation paths.** `build_study_panel.py`,
   `build_forecast_panel.py`, `cross_venue.py` and the CLI now read the one universe
   module rather than deriving a universe each, so the five readers cannot drift apart.
@@ -233,6 +277,27 @@ cannot support.
   a stated open end are different facts.
 
 ### Measurements recorded
+
+- **The second venue's records are now readable — and no pair is a match.** Of the 229
+  declared candidates, **63 read a predicate carrying every component** and **166 refuse
+  by name**: 119 for a settlement subject the venue's text does not state, 19 for a meeting
+  the declared calendar does not date, 13 for a level whose yes side the venue never names,
+  6 for text stating no readable payout, 5 for the venue's own fields disagreeing on the
+  strike, and 4 for a meeting it does not state. The metadata sweep held **9,784 records
+  across 25 pages**, every one carrying a stated instant, covering **229 of 229** declared
+  candidates.
+  - The parser's absence is **no longer the binding refusal**: pairs refused for want of a
+    declared parser are **0**, where they were **157,781**. But **no pair grades a match**,
+    and the binding reason is the *first* venue: **23,751** pairs are refused for an
+    unobserved required component, which is exactly `377 readable Kalshi × 63 readable
+    Polymarket` and therefore *every* pair of two readable contracts and no other. Those
+    components are `reference_period` and `settlement_criterion`, and they are unobserved
+    **only on the first venue's side**, whose own market record publishes neither and whose
+    text arrives from the rule records D1 requires.
+  - So D4 is **partially satisfied**: the grammar is closed, the matched instrument is not,
+    and the measured remaining blocker is **D1** rather than the second venue's vocabulary.
+    A perfect second-venue grammar cannot produce a match while the first venue's reads are
+    unobserved on two required components.
 
 - **Capture against the live venue.** 163 captures written across all four declared
   series, `pages_blocked` 0, `contracts_skipped_no_rule_text` 0, 0 captures without a

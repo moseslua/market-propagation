@@ -1247,6 +1247,50 @@ def _run_capture_markets(args: argparse.Namespace) -> int:
     return EXIT_BLOCKED if blocked else EXIT_OK
 
 
+def _run_capture_venue_metadata(args: argparse.Namespace) -> int:
+    """Acquire the second venue's own market text for the declared candidate family.
+
+    The second venue's cleaned local layer names each contract and states nothing about
+    what it pays on, so a predicate can only be read from the venue's own listing. The
+    sweep reads that listing in the venue's own vocabulary rather than by replaying the
+    candidate slugs, because a lookup by name would make the acquisition universe the
+    candidate list itself. Every page is archived before it is parsed, and every record
+    cites the page it was read from and the instant the *serving* system stated, so a
+    predicate read later is re-derivable from held bytes rather than from a fresh
+    request.
+
+    A blocked page is not an empty result: the summary reports which query was blocked
+    and the command exits `EXIT_BLOCKED` rather than reporting a smaller universe as a
+    complete one.
+    """
+    from .ingest import polymarket_markets
+
+    summary = polymarket_markets.capture(
+        args.root, config_path=args.config, timeout_seconds=args.timeout
+    )
+    document = summary.as_dict()
+    if args.output:
+        path = pathlib.Path(args.output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(_jsonable(document), indent=2, sort_keys=True) + "\n")
+        document["output_path"] = str(path)
+    _print_json(document)
+    _note(
+        f"{summary.markets_held} record(s) held under {summary.store_root} from "
+        f"{summary.pages_archived} archived page(s) over {summary.requests_made} request(s); "
+        f"{summary.markets_held_with_a_stated_instant} carry an instant the serving system states"
+    )
+    if summary.records_bound_reached:
+        _note(
+            "flag: the declared record bound was reached, so this sweep is bounded and not complete"
+        )
+    for query in summary.page_bounded_queries:
+        _note(f"page-bounded query: {query}")
+    for item in summary.blocked:
+        _note(f"blocked query: {item['query']} ({item['reason']}) {item.get('detail')}")
+    return EXIT_OK if summary.markets_held and not summary.blocked else EXIT_BLOCKED
+
+
 def _run_match_cross_venue(args: argparse.Namespace) -> int:
     """Grade every cross-venue candidate pair and write the registry.
 
@@ -2054,6 +2098,29 @@ def _build_parser() -> argparse.ArgumentParser:
     markets_capture.add_argument("--timeout", type=float, default=30.0)
     markets_capture.add_argument("--output", help="path of the JSON summary to write")
     markets_capture.set_defaults(handler=_run_capture_markets)
+
+    venue_metadata = commands.add_parser(
+        "capture-venue-metadata",
+        help="acquire the second venue's own market text for the declared candidate family",
+        description=(
+            "GET the second venue's own market listing for the candidate family its "
+            "declared acquisition block names, archive every page, and hold one "
+            "immutable metadata record per contract carrying the venue's own question "
+            "and description, the instant the serving system stated, and the hash of "
+            "the page it was read from. The venue's cleaned local layer carries no "
+            "settlement-rule text, so this is the only route by which a second-venue "
+            "payout predicate can be read from the venue's own words rather than from "
+            "the slug that merely names the contract. Issues GET requests only and "
+            "uses no credentials."
+        ),
+    )
+    venue_metadata.add_argument(
+        "--config", default=DEFAULT_MATCH_CONFIG, help="declared acquisition plan"
+    )
+    venue_metadata.add_argument("--root", help="store root; defaults to the declared store_root")
+    venue_metadata.add_argument("--timeout", type=float, default=30.0)
+    venue_metadata.add_argument("--output", help="path of the JSON summary to write")
+    venue_metadata.set_defaults(handler=_run_capture_venue_metadata)
 
     match = commands.add_parser(
         "match-cross-venue",

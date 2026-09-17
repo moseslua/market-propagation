@@ -133,9 +133,11 @@ __all__ = [
     "COMPONENTS",
     "GRADES",
     "MATCH_CONFIG_PATH",
+    "PARSER_DECLARED_SECOND_VENUE_MARKET_TEXT",
     "POLICY_TEXT_FIELDS",
     "REASONS",
     "REGISTRY_VERSION",
+    "SECOND_VENUE_REASONS",
     "SETTLEMENT_VINTAGES",
     "THRESHOLD_UNITS",
     "ComponentAgreement",
@@ -176,9 +178,19 @@ POLICY_TEXT_FIELDS: tuple[str, str] = ("yes_sub_title", "title")
 #: and a reader that answered from a title anyway would be inventing a match.
 PARSER_DECLARED_POLICY_FORMS = "declared_policy_predicate_forms"
 PARSER_NONE_DECLARED = "none_declared_in_this_repository"
+#: The grammar for a venue whose own market record states the claim in its
+#: ``question`` and ``description`` text rather than in a subtitle and a title. It is
+#: a second grammar and not an extension of the first: this layer never reads one
+#: venue's text through another venue's grammar, because the two venues write their
+#: claims in different vocabularies and a shared reader would read one of them wrong.
+PARSER_DECLARED_SECOND_VENUE_MARKET_TEXT = "declared_second_venue_market_text"
 
 #: The permitted parser declarations, in the order they are checked.
-PARSERS: tuple[str, ...] = (PARSER_DECLARED_POLICY_FORMS, PARSER_NONE_DECLARED)
+PARSERS: tuple[str, ...] = (
+    PARSER_DECLARED_POLICY_FORMS,
+    PARSER_DECLARED_SECOND_VENUE_MARKET_TEXT,
+    PARSER_NONE_DECLARED,
+)
 
 #: The units a stated threshold may be published in, and the exact scale that
 #: carries each onto the canonical unit (percent). The scales live in the
@@ -266,6 +278,39 @@ REASON_VENUE_PAYOUT_TEXT_HAS_NO_DECLARED_PARSER = (
 )
 REASON_RECORD_FIELD_UNPUBLISHED = "record_does_not_publish_a_required_predicate_field"
 
+#: Reasons a second-venue record yields no predicate. They are declared here rather
+#: than in the grammar that raises them, because this module is where a
+#: ``PredicateRead`` validates the code it carries: a grammar able to raise a code
+#: this module does not declare would produce a refusal no consumer could branch on.
+#: The grammar imports them from here, which is also the direction that keeps the
+#: import graph acyclic — it already reads this module for ``SettlementCriterion``,
+#: so this module must never read it back at module scope.
+REASON_SETTLEMENT_SUBJECT_UNREADABLE = "description_states_no_readable_settlement_subject"
+REASON_THRESHOLDS_DISAGREE = "stated_thresholds_disagree_across_the_market_record"
+REASON_MEETING_UNREADABLE = "venue_text_states_no_readable_meeting_reference_period"
+REASON_MEETINGS_DISAGREE = "stated_meeting_reference_periods_disagree_across_the_market_record"
+REASON_RESOLUTION_BASIS_UNREADABLE = "description_states_no_resolution_basis"
+REASON_YES_SIDE_UNREADABLE = "market_text_states_no_payoff_direction_for_the_yes_side"
+REASON_YES_SIDES_DISAGREE = "stated_yes_sides_disagree_across_the_market_record"
+#: The venue's metadata holds no record for the contract at all. It is a distinct
+#: fact from a record that omits a field, and the two must not share a code: a
+#: contract the sweep never reached is a coverage statement about the acquisition,
+#: while a reached contract whose text omits a field is a statement about the venue.
+REASON_SECOND_VENUE_RECORD_NOT_HELD = "the_venue_metadata_holds_no_record_for_this_contract"
+
+#: The second-venue refusal codes as one tuple, so the grammar re-exports the
+#: vocabulary from its single declaration instead of restating the strings.
+SECOND_VENUE_REASONS: tuple[str, ...] = (
+    REASON_SETTLEMENT_SUBJECT_UNREADABLE,
+    REASON_THRESHOLDS_DISAGREE,
+    REASON_MEETING_UNREADABLE,
+    REASON_MEETINGS_DISAGREE,
+    REASON_RESOLUTION_BASIS_UNREADABLE,
+    REASON_YES_SIDE_UNREADABLE,
+    REASON_YES_SIDES_DISAGREE,
+    REASON_SECOND_VENUE_RECORD_NOT_HELD,
+)
+
 #: Reasons a pair is refused or graded down. Each names one distinct fact, so a
 #: blocked registry reports which one applied rather than one undifferentiated
 #: rejection.
@@ -299,6 +344,7 @@ REASONS: tuple[str, ...] = (
     REASON_TEXT_UNREADABLE,
     REASON_RATE_SUBJECT_UNREADABLE,
     REASON_MONTH_NOT_IN_CALENDAR,
+    *SECOND_VENUE_REASONS,
 )
 
 #: Agreement verdicts, one per component of a graded pair.
@@ -1243,6 +1289,8 @@ def read_predicate(
                 f"the record for {contract_id} publishes no {name!r}, which the declared "
                 f"{declaration.parser} grammar reads",
             )
+    if declaration.parser == PARSER_DECLARED_SECOND_VENUE_MARKET_TEXT:
+        return _read_second_venue_market_text(declaration, contract_id=contract_id, fields=fields)
     try:
         parsed: ParsedPredicate = parse_predicate(
             yes_sub_title=str(fields[POLICY_TEXT_FIELDS[0]]),
@@ -1316,6 +1364,67 @@ def read_predicate(
         detail=(
             f"the archived text of {contract_id} states a "
             f"{parsed.rate_definition} payout that this repository's declared forms read"
+        ),
+    )
+
+
+def _read_second_venue_market_text(
+    declaration: VenueDeclaration,
+    *,
+    contract_id: str,
+    fields: Mapping[str, str],
+) -> PredicateRead:
+    """One second-venue record read through its own declared market text.
+
+    The grammar is imported here rather than at module scope deliberately. It reads
+    this module for its refusal vocabulary and for ``SettlementCriterion``, and it
+    reads ``cross_venue`` for the declared calendar, and ``cross_venue`` reads this
+    module back: a module-scope import would close that loop. A cycle that happens to
+    import cleanly today breaks on whichever module a future entry point imports
+    first, so the one import that would close it is kept inside the one function that
+    needs it.
+
+    Every component is read from the venue's own stated text, including the
+    ``reference_period`` and the ``settlement_criterion`` that the policy path has to
+    receive from its caller. Neither is left unobserved here, because this venue's own
+    text states both, and an unobserved component refuses every pair it appears in —
+    so leaving them unobserved would report a readable record as an unreadable one.
+    """
+    from .ingest.polymarket_predicates import parse_polymarket_predicate
+
+    try:
+        parsed = parse_polymarket_predicate(
+            question=fields["question"],
+            description=fields["description"],
+            group_item_title=fields.get("group_item_title"),
+        )
+    except PredicateError as error:
+        return _refusal(declaration, contract_id, error.reason, error.detail)
+    return PredicateRead(
+        venue=declaration.venue,
+        contract_id=contract_id,
+        predicate=VenuePredicate(
+            venue=declaration.venue,
+            contract_id=contract_id,
+            underlying_event=parsed.underlying_event,
+            reference_period=parsed.reference_period,
+            threshold=parsed.threshold,
+            threshold_unit=parsed.threshold_unit,
+            inequality=parsed.operator,
+            orientation=parsed.orientation,
+            settlement_criterion=parsed.settlement_criterion,
+            reference_horizon=parsed.reference_horizon,
+            yes_axis=parsed.yes_axis,
+            yes_sub_title=fields["question"],
+            title=fields["description"],
+            unobserved=frozenset(),
+            contract=None,
+        ),
+        reason=None,
+        detail=(
+            f"the venue's own market text for {contract_id} states a "
+            f"{parsed.underlying_event} payout that this repository's declared second-venue "
+            "grammar reads"
         ),
     )
 

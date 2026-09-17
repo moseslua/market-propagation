@@ -21,3 +21,8 @@ reports/generated/
 # repository sources: the capture root holds bytes fetched from a public venue.
 rules/
 
+# Captured venue metadata and the per-contract records read from it, for the same
+# reason and from a second venue: the pages are fetched bytes rather than repository
+# sources, and `configs/matching_v1.yaml` declares the store outside the sources.
+polymarket-metadata/
+

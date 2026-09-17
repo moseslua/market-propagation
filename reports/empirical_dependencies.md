@@ -80,7 +80,7 @@ other row is met.
 | D1 | Per-contract rule-vintage record | A, C (and B once matched) | **absent** — 0 of 785 |
 | D2 | Observation overlap: universe observable before its own window | D1 for the studied cohort | **not satisfied for the retrospective cohort** — the union is wired, so the remaining reason is the ordering: a capture cannot precede a 2025 window |
 | D3 | Point-in-time expectation source | news and network rungs (A, C) | **absent** — provider not present |
-| D4 | Cross-venue matched instrument live at a declared release instant | B | **absent** — 0 of 10 |
+| D4 | Cross-venue matched instrument live at a declared release instant | B | **partially satisfied** — the parser is written and reads 63 of 229 records with every component; 0 of 10 matched, because every readable pair is blocked on the first venue's unobserved components |
 | D5 | (a) Second distinct perp build | D | **(a) satisfied** — 17 builds, 43 assets |
 | D5 | (b) Observable execution-cost layer | D | **absent** — not observable from this source |
 | D6 | Estimable declared null scenarios | calibration verdict | **satisfied** — 10 of 10 estimable, verdict `pass` |
@@ -259,41 +259,75 @@ under `all_required_fields_must_match`. Ticker resemblance is a lead only.
 | **EXACT / ECONOMICALLY_EQUIVALENT / APPROXIMATE** | **0 / 0 / 0** |
 | REJECT | **157,781** |
 | Primary analysis pairs | **0** |
-| Venue records read | Kalshi 689, Polymarket 229 |
+| Venue records supplied | Kalshi 689, Polymarket 229 |
+| Venue records **readable** | Kalshi **377**, Polymarket **63** |
+| Pairs refused for want of a declared parser | **0** (was 157,781) |
 
-The refusals are semantic, and the largest ones are about published text rather than about
-matching:
+The second venue's parser is **written and declared**, and the refusal that named its
+absence is gone. `configs/matching_v1.yaml` declares
+`parser: declared_second_venue_market_text` over
+`payout_text_fields: [question, description]`, and the grammar reads the venue's own market
+text and never its slug — which `tests/test_polymarket_predicates.py` pins by handing the
+grammar a record whose slug states the strike and the meeting perfectly, with both text
+fields unreadable, and requiring a refusal.
 
-| Refusal | Pairs |
+The 63 readable records carry **every component**, including the `reference_period` and
+`settlement_criterion` that the first venue's path has to receive from its caller. The
+remaining 166 candidates refuse by name, and each code names one fact:
+
+| Refusal (per record) | Records |
 | --- | --- |
-| `venue_payout_text_has_no_parser_declared_in_this_repository` | 157,781 |
-| `one_side_states_no_readable_payoff_predicate` | 157,781 |
-| `contract_month_is_not_dated_by_the_declared_calendar` | 71,219 |
-| `published_contract_text_states_no_readable_payout` | 229 |
+| `description_states_no_readable_settlement_subject` | 119 |
+| `contract_month_is_not_dated_by_the_declared_calendar` | 19 |
+| `market_text_states_no_payoff_direction_for_the_yes_side` | 13 |
+| `published_contract_text_states_no_readable_payout` | 6 |
+| `stated_thresholds_disagree_across_the_market_record` | 5 |
+| `venue_text_states_no_readable_meeting_reference_period` | 4 |
 
-Counts overlap, because a pair can fail several checks; the first two are on every pair.
-**This is the sharpest form of the dependency yet recorded: it is a missing parser, not a
-missing venue.** The second venue's records are present and readable as records; what does
-not exist is a declared parser that turns its payout text into a predicate this repository
-can compare.
+**No pair grades a match, and the binding reason is the *first* venue.** Of the 157,781
+pairs, **23,751** are refused for a required component being unobserved — and
+`377 × 63 = 23,751` exactly, so that is *every* pair of two readable contracts and no
+other. The unobserved components are `reference_period` (377 records) and
+`settlement_criterion` (377 records), and they are unobserved **only on Kalshi's side**:
+`cross_venue.first_venue_reads` passes both as `None` because the venue's own market record
+publishes neither, while the second venue's 63 reads carry both. The next-largest refusals
+are `reference_horizon_differs` (22,766) and `underlying_economic_event_differs` (15,882),
+which are genuine component differences between the two venues' claims.
 
-**Candidate selection is a rule, not evidence.** From the registry:
-`limit_applied: 250`, `cap_hid_records: false`, `records_available: 163,289`,
-`records_matching_the_declared_pattern: 229`,
-`pattern_is_a_selection_rule_and_not_evidence: true`. The 229 is a keyword-selected set,
-so the 157,781-pair denominator is a declared selection and not a market universe.
+The dependency's shape has therefore changed rather than closed. It is **no longer a missing
+parser**; it is now exactly the coupling recorded below, measured. A matched pair inherits
+the per-contract vintage requirement, and the rule records that would carry
+`settlement_criterion` and `reference_period` are the same records D1 needs. **A perfect
+second-venue grammar cannot produce a match while the first venue's reads are unobserved on
+two required components.**
 
-**Coupling.** Closing D4 alone does not make study B runnable: a matched pair inherits the
-same per-contract vintage requirement, so D4 without D1 leaves B blocked on D1.
+**Candidate selection is a rule, not evidence, and its identity moved to the venue's key.**
+From the registry: `records_available: 163,289`,
+`records_matching_the_declared_pattern: 229`, `candidates_supplied: 229`,
+`cap_applied_to: contract_identity`, `cap_hid_records: false`,
+`pattern_is_a_selection_rule_and_not_evidence: true`. A candidate is now **identified** by
+`condition_id` and **selected** by `market_slug`, declared as two separate fields because a
+name and a key are different things and a lookup by name would be a lookup by the very field
+this layer refuses to read a predicate from. The 229 is a keyword-selected set, so the
+157,781-pair denominator is a declared selection and not a market universe — and it is
+**unchanged** by that identity move, which is what makes the change a conformance fix
+rather than a population change.
 
-**Where to get it (carried forward).**
-`gamma-api.polymarket.com/public-search?q=…` works and returns the event with its strike
-markets in one call; a timeout on that host is transient and must be retried before being
-recorded as unreachable. Read earlier, the search for `Fed Decision` returns
-`fed-decision-in-september-762` whose strike labels are basis-point changes
-(`50+ bps decrease`, `25 bps decrease`, `No change`) — the `target_rate_change_bps`
-definition the declared predicate set names. That establishes the acquisition channel; it
-does **not** satisfy D4.
+**Coupling.** Closing D4 alone does not make study B runnable, and the measurement above now
+shows why in numbers rather than in principle: a matched pair inherits the same per-contract
+vintage requirement, so D4 without D1 leaves B blocked on D1 — which is precisely the state
+this checkout is in.
+
+**Where to get it — acquired, and how.** The requirement text is
+`gamma-api.polymarket.com/public-search?q=…`, the only measured route that answers for a
+settled market: `GET /markets?condition_ids=<id>` and `GET /markets?slug=<slug>` both
+returned `[]` for a market the search route returns in full, so no reader may be handed one
+of them as a fallback. The sweep is declared in `configs/matching_v1.yaml` under the venue's
+own `metadata_acquisition` block — six queries in the venue's vocabulary, a page bound and a
+record bound, each query carrying why it is in the universe — and it held **9,784 records
+across 25 pages, every one carrying the instant the serving system stated and the hash of
+the page bytes it was read from**, covering **229 of 229** declared candidates. The captured
+bytes are acquired data rather than repository sources and are excluded by `.gitignore`.
 
 ---
 
@@ -495,7 +529,10 @@ answering.
   shock indistinguishable from transmission; a complete news vector leaves every receiver
   refused on its own rule check.
 - **D4 is worthless before D1**, because a matched pair inherits the same vintage
-  requirement.
+  requirement. Now measured rather than inferred: all **23,751** refusals on a readable pair
+  are the first venue's unobserved `reference_period` and `settlement_criterion`
+  (`377 × 63`), so the second venue's written and declared grammar cannot produce a match
+  until D1's rule records exist.
 - **D7 is worthless before D1**, for the same reason, and D1 is worthless for a
   confirmatory claim without D7's power.
 - **D5(a) is now satisfied and D5(b) is not**, and they are independent of D1–D4, D6 and

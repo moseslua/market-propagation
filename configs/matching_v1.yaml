@@ -83,15 +83,103 @@ venues:
     documentation_verified: true
     remote_status: reachable_without_credentials
   - id: polymarket
-    label: Polymarket cleaned local trade layer
+    label: Polymarket market metadata, acquired from the venue's own listing
+    # The fields the declared grammar reads. They are the venue's own market-text
+    # columns, named here rather than `market_slug`, because a slug is a name: the
+    # venue writes `will-the-fed-decrease-interest-rates-by-50-bps-after-its-march-2024-meeting`
+    # for a market whose rule pays on "50 *or more*", so a predicate read from a slug
+    # is wrong in the direction that matters most.
     payout_text_fields:
-      - market_slug
-    parser: none_declared_in_this_repository
-    # Nothing about this record was fetched. `ingest/polymarket_public.py` documents
-    # that every documented host timed out in this environment, and the field names
-    # it lists are marked `documentation_verified=False` for that reason.
-    documentation_verified: false
-    remote_status: unreachable_in_this_environment
+      - question
+      - description
+    parser: declared_second_venue_market_text
+    # The grammar reads the venue's own `question` and `description`, both read live
+    # from the search route the `metadata_acquisition` block below declares.
+    # `group_item_title` is read whenever the record carries one and is deliberately
+    # not a required field: the venue states it for its decision markets and not for
+    # its level markets, so requiring it would refuse records the grammar can read.
+    documentation_verified: true
+    remote_status: reachable_without_credentials
+    # Where the venue's own statement of what a contract pays on can be acquired, so
+    # the predicate layer reads a record that states it rather than a slug. The
+    # cleaned local layer's verified column list carries `market_slug`, `outcome_label`,
+    # `condition_id` and `category` and no settlement-rule text column, so the payout
+    # text is not in the archive and has to be fetched from the venue itself.
+    #
+    # Every count and every query below is a declaration, not a result. Nothing here
+    # states that any contract's metadata has been acquired.
+    metadata_acquisition:
+      host: https://gamma-api.polymarket.com
+      # The search route is the only route that answers for a closed market:
+      # `GET /markets?condition_ids=<id>` and `GET /markets?slug=<slug>` were both
+      # measured returning `[]` on 2026-09-17 for a settled Fed-decision market that
+      # the search route returns in full, so an by-id read would record a market that
+      # exists as a market that does not.
+      search_path: public-search
+      route_note: >-
+        public-search?q=<query> is the only measured route that answers for a closed
+        market; the documented `/markets?condition_ids=` and `/markets?slug=` routes
+        returned an empty list for the same settled market, so no reader may be handed
+        one of them as a fallback.
+      # The record contract the predicate layer reads, stated once here beside the
+      # module that writes it: the venue's own `question` and `description` verbatim,
+      # the parent event's slug and title, and the page's citation. `slug` is an
+      # identifier in that record and never a component of the predicate.
+      record_version: polymarket_market_metadata_v1
+      # One immutable record per `condition_id`, under this root, with the page's own
+      # bytes in a content-addressed archive beside it. The root is not a repository
+      # source and the flag below is asserted when the module loads this block.
+      store_root: polymarket-metadata
+      writes_captured_data_into_the_repository: false
+      # Search pagination. `limit_per_type` bounds the events one page carries;
+      # `page` is 1-based and was measured to address results deterministically.
+      page_parameter: page
+      page_size: 50
+      max_pages_per_query: 40
+      # The sweep stops holding new records at this bound and says so in its summary
+      # rather than continuing silently, because a bounded sweep and a complete one
+      # are different statements about the universe.
+      max_records_per_run: 20000
+      # The queries are the venue's own naming for the slices of the declared
+      # candidate family, and each carries why it is in the universe. Reading a
+      # candidate's own slug back to the search route would make the acquisition
+      # universe the candidate list itself, which is the title-similarity inference
+      # this layer refuses; these queries are the venue's vocabulary instead.
+      queries:
+        - query: Fed
+          why: >-
+            the venue names its Fed-decision events "Fed Decision in <Month>?" and its
+            standing-rate events "Fed Interest Rates: <Month>", so the bare family word
+            reaches both event families in one query.
+        - query: Fed Decision
+          why: >-
+            the exact title stem of the per-meeting event series the Fed-decision
+            contracts hang under, which is what places a market's parent event and its
+            own group item beside it.
+        - query: FOMC
+          why: >-
+            the venue's own series ticker for the committee, and the word its
+            descriptions use for the meeting that resolves the contract, so an event
+            titled through the committee rather than through "Fed" is still reached.
+        - query: Fed Rates
+          why: >-
+            the venue's phrasing for the level contracts ("Fed Rates: <Month>"), which
+            are a different underlying event from the change contracts and are reached
+            by this phrase rather than by the decision wording.
+        - query: interest rates
+          why: >-
+            the venue's own generic phrasing for the family, which reaches events whose
+            titles name no month and whose slug carries a date suffix.
+        - query: federal funds
+          why: >-
+            the phrase the venue's descriptions resolve on ("the target federal funds
+            range"), so a market whose event title states only the rate level is still
+            reached by the vocabulary its own description uses.
+      note: >-
+        These queries are a selection of the venue's vocabulary, not a match rule: a
+        contract they do not reach is outside the acquired universe rather than refused
+        for resembling nothing, and every count of held records is reported against the
+        queries that produced it.
 
 threshold_units:
   # The scale carrying each declared unit onto the canonical unit, which is percent.
@@ -238,6 +326,26 @@ refusals:
     meaning: reuses the predicate parser's own code
   - code: contract_month_is_not_dated_by_the_declared_calendar
     meaning: reuses the predicate parser's own code
+  # The second venue's own refusals. They are declared here for the same reason the
+  # rest are: a reader of a registry has to be able to resolve every code it carries
+  # against this file. Each names one fact the venue's own text failed to establish,
+  # and none of them is ever resolved by defaulting the component.
+  - code: description_states_no_readable_settlement_subject
+    meaning: the second venue's description names no rate this study governs, or names one and states neither a change to it nor a level of it
+  - code: stated_thresholds_disagree_across_the_market_record
+    meaning: the second venue's own fields state more than one strike, refused rather than resolved by picking one
+  - code: venue_text_states_no_readable_meeting_reference_period
+    meaning: the second venue states no meeting as a month and a year, so it names no period a calendar could date
+  - code: stated_meeting_reference_periods_disagree_across_the_market_record
+    meaning: the second venue's own fields state more than one meeting
+  - code: description_states_no_resolution_basis
+    meaning: the second venue's description names no served official statement its payout is computed from
+  - code: market_text_states_no_payoff_direction_for_the_yes_side
+    meaning: the second venue states a level but names no side of it, so which outcome the yes side prices is not established
+  - code: stated_yes_sides_disagree_across_the_market_record
+    meaning: the second venue's own fields state different sides of one level, so which outcome the yes side prices is contradicted
+  - code: the_venue_metadata_holds_no_record_for_this_contract
+    meaning: the acquisition holds no record for this contract, so its payout text was not acquired — a coverage statement about the sweep, and a different fact from a record that omits a field
   # Deliberately absent: a title- or slug-similarity code. No similarity score is
   # computed, so no refusal can be expressed in terms of one.
 
@@ -262,10 +370,19 @@ candidate_selection:
     series_declared_in: configs/cohort_v2.yaml
     selects_by: declared_series_membership
   second_venue:
-    # The cleaned local layer's own identity column. Its record states no payout text,
-    # so every read below the selection is a named refusal.
+    # The cleaned local layer's own identity column, which names the contract. That
+    # layer still states no payout text: the venue's `question` and `description` for
+    # the contract are read from the metadata store the `polymarket` venue entry
+    # declares, and a contract the sweep did not reach refuses by name rather than
+    # falling back to the column that only names it.
     source: data/external/polymarket-v1/daily_aligned_multi/*.parquet
-    contract_identity_column: market_slug
+    # A candidate is *identified* by the venue's own contract key, which is what its
+    # records and the acquired metadata are keyed by, and it is *selected* by the slug
+    # a reader recognizes. The two are declared separately because they are different
+    # things: a name is not evidence, and a lookup by name would be a lookup by the
+    # field this layer refuses to read a predicate from.
+    contract_identity_column: condition_id
+    slug_pattern_column: market_slug
     # A selection pattern, not a match rule: it narrows which records are considered
     # candidates for the declared policy family. Widening or replacing it changes the
     # denominator and is recorded with every run.
