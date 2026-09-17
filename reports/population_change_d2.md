@@ -99,6 +99,26 @@ listed after 2026-01-29 and the capture cadence is what will see one. Dormant he
 by fixtures in `tests/test_kalshi_universe.py`, including a `live_only` contract that
 survives the union and a contract both paths hold that collapses to one identity.
 
+## Verified end to end, and the one thing it does change
+
+The study panel was rebuilt through the migrated read on real data. The number that
+decides whether this is a conformance fix or a population change is the declared
+denominator, and it **did not move**: the rebuilt panel carries **785 declared pairs**,
+identically to the recorded figure, over the same 10 releases, with
+`rule_version_unknown` still masking every row because the rule-vintage gate is untouched.
+
+The panel's **bytes** do differ from the sealed one, and the reason is worth stating
+because it is the only observable effect of the change. Field-by-field over the 163
+overlapping contracts, `title`, `open_time` and `close_time` are identical and **`status`
+differs on 32 of them**. The declared layer order resolves that disagreement in the live
+layer's favour, which is the designed rule — the live capture is the more recent
+observation of the same contract — so 32 panel rows carry the status the capture observed
+rather than the one the archive's 2026-01-29 snapshot recorded.
+
+That is a change in what the panel *says* and not in which contracts it is about:
+membership is decided by the listing interval, which agrees between the layers, so no
+contract enters or leaves and no denominator moves.
+
 ## What it does not change
 
 - **No eligibility change.** Study eligibility, `study_eligible` and the rule-vintage gate

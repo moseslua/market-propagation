@@ -158,6 +158,14 @@ cannot support.
     retrospective arm is therefore unchanged by it; the forward arm's declared universe
     would have been empty without it, because the archive's rows end 2026-01-29 and every
     forward release falls after that.
+  - Verified end to end on real data rather than only in fixtures. The study panel was
+    rebuilt through the migrated read and its declared denominator **did not move**: **785
+    declared pairs** over the same 10 releases, with `rule_version_unknown` still masking
+    every row. The panel's bytes do differ from the sealed build, and field-by-field the
+    only difference is `status`, which disagrees between the layers on **32** of the 163
+    overlapping contracts and now resolves to the live observation per the declared layer
+    order (`title`, `open_time` and `close_time` agree exactly). Membership is decided by
+    the listing interval, which agrees, so no contract enters or leaves.
   - The audit for other cohort-defining archive intersections is closed. Five readers were
     moved onto the one module (the graph builder, the study panel, the forecast panel, the
     cross-venue matcher and the CLI) and the last two names for the old archive-only
