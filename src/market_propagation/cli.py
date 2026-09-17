@@ -955,6 +955,7 @@ def _run_capture_rules(args: argparse.Namespace) -> int:
     captured: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     blocked: list[dict[str, Any]] = []
+    page_bounded: list[dict[str, Any]] = []
     transport = HttpTransport(
         store.raw_store,
         timeout_seconds=args.timeout,
@@ -1026,6 +1027,14 @@ def _run_capture_rules(args: argparse.Namespace) -> int:
                 cursor = payload.get("cursor") or None
                 if not cursor:
                     break
+                if page + 1 == args.max_pages:
+                    page_bounded.append(
+                        {
+                            "series_ticker": series_ticker,
+                            "max_pages": args.max_pages,
+                            "next_cursor": str(cursor),
+                        }
+                    )
     document = {
         "produced_by": f"{PROGRAM}.capture-rules",
         "config_version": settings.config_version,
@@ -1034,6 +1043,7 @@ def _run_capture_rules(args: argparse.Namespace) -> int:
         "captures_written": len(captured),
         "contracts_skipped_no_rule_text": len(skipped),
         "pages_blocked": len(blocked),
+        "page_bounded": page_bounded,
         "captures": captured,
         "skipped": skipped,
         "blocked": blocked,
@@ -1055,7 +1065,12 @@ def _run_capture_rules(args: argparse.Namespace) -> int:
             f"blocked page: series {item['series_ticker']} page {item['page']} "
             f"({item['reason']}) {item['detail']}"
         )
-    return EXIT_OK if captured and not blocked else EXIT_BLOCKED
+    for item in page_bounded:
+        _note(
+            f"page bound reached: series {item['series_ticker']} has more pages after "
+            f"max_pages={item['max_pages']}"
+        )
+    return EXIT_OK if captured and not blocked and not page_bounded else EXIT_BLOCKED
 
 
 def _run_attest_rules(args: argparse.Namespace) -> int:

@@ -1,0 +1,21 @@
+config_version: evidence_acquisition_v1
+state_root: data/prospective/acquisition
+rules_capture_root: data/prospective/rules
+cadence:
+  host_timezone: local
+  rules_daily_host_time: "06:41:00"
+  markets_monthly_host_time: "06:47:00"
+execution:
+  timeout_seconds: 30
+  job_timeout_seconds: 900
+  max_attempts: 3
+  retry_backoff_seconds: 60
+  loop_seconds: 60
+bounds:
+  rules_max_pages: 25
+  rules_page_size: 200
+  markets_max_pages: 25
+  markets_page_size: 200
+  trades_max_pages: 20
+  trades_page_size: 1000
+  markets_max_contracts: 400
