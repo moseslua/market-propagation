@@ -158,6 +158,22 @@ cannot support.
     retrospective arm is therefore unchanged by it; the forward arm's declared universe
     would have been empty without it, because the archive's rows end 2026-01-29 and every
     forward release falls after that.
+  - The audit for other cohort-defining archive intersections is closed. Five readers were
+    moved onto the one module (the graph builder, the study panel, the forecast panel, the
+    cross-venue matcher and the CLI) and the last two names for the old archive-only
+    universe are **deleted rather than left unused**: `DEFAULT_MARKETS_GLOB` (declared and
+    referenced nowhere) and `cross_venue.KALSHI_MARKETS_GLOB` (exported and read nowhere).
+    A live but unused constant naming one layer is how the archive-only universe gets
+    quietly re-adopted, so a caller now has to import the union to read a universe at all.
+    The `--markets-glob` help text said omitting it resolved the declared layer for the
+    window; omitting it reads the union, and it now says so.
+  - `live_only` is **0 on this checkout, and verified to be genuine rather than a union
+    defect**: the live layer holds 163 distinct contracts and every one is also in the
+    archive, measured by **0** live rows carrying an `open_time` after the archive's last
+    row (2026-01-29). No captured contract could have been absent. Criterion 1 stays dormant
+    until a capture covers a contract listed after the archive ends — the forward arm's
+    exact position — so dormant means the case has not arisen, not that the mechanism is
+    untested; fixtures in `tests/test_kalshi_universe.py` pin both directions.
 - `reports/population_change_d2.md` is new: the estimand record for the change above,
   written as a page rather than an edit because admitting live-observed contracts was
   recorded as a cohort decision rather than a wiring change. `reports/preregistration_v2.md`

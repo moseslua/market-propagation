@@ -85,6 +85,20 @@ The union identity is **asserted rather than reported**: diagnostics whose count
 to the universe raise `UniverseError`, so a provenance split that disagrees with the
 population fails the read instead of being printed beside it.
 
+**Why `live_only` is zero, and why that is not a defect.** The live layer holds 163 distinct
+contracts and **every one of them is also in the archive**. That was measured directly
+rather than inferred: **0** live rows carry an `open_time` after the archive's own last row
+(2026-01-29), so no captured contract *could* be absent from the archive in the first place,
+and the 163 overlaps are real. The union reads them correctly.
+
+Criterion 1 — a live-observed contract admitted that the archive lacks — therefore stays
+**dormant until a capture covers a contract listed after the archive's end**. That is
+precisely the forward arm's position, because the archive cannot reach a contract first
+listed after 2026-01-29 and the capture cadence is what will see one. Dormant here means
+*the case has not arisen*, not *the mechanism is untested*: the union mechanics are pinned
+by fixtures in `tests/test_kalshi_universe.py`, including a `live_only` contract that
+survives the union and a contract both paths hold that collapses to one identity.
+
 ## What it does not change
 
 - **No eligibility change.** Study eligibility, `study_eligible` and the rule-vintage gate

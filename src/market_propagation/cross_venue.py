@@ -65,8 +65,10 @@ MATCH_CONFIG_PATH = "configs/matching_v1.yaml"
 COHORT_CONFIG_PATH = "configs/cohort_v2.yaml"
 GRAPH_CONFIG_PATH = "configs/neighbor_graph_v2.yaml"
 
-#: The two local layers the candidate universe is drawn from.
-KALSHI_MARKETS_GLOB = "data/external/kalshi-trades/markets-*.parquet"
+#: The second venue's cleaned local layer. The first venue's universe is not named here:
+#: it is the declared union of observation paths, defined once in
+#: :mod:`market_propagation.ingest.kalshi_universe`, so that a caller cannot reach for a
+#: constant that names one layer and read that layer as the whole universe.
 POLYMARKET_GLOB = "data/external/polymarket-v1/daily_aligned_multi/*.parquet"
 
 #: The second venue's own identity column, and the cap applied when nothing else is
@@ -414,7 +416,6 @@ __all__ = [
     "DEFAULT_SECOND_VENUE_IDENTITY_COLUMN",
     "DEFAULT_SECOND_VENUE_LIMIT",
     "GRAPH_CONFIG_PATH",
-    "KALSHI_MARKETS_GLOB",
     "MATCH_CONFIG_PATH",
     "POLYMARKET_GLOB",
     "CrossVenueError",

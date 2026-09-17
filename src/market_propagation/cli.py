@@ -77,8 +77,9 @@ DEFAULT_COHORT_CONFIG = "configs/cohort_v2.yaml"
 DEFAULT_GRAPH_CONFIG = "configs/neighbor_graph_v2.yaml"
 DEFAULT_PIPELINE_CONFIG = "configs/external_history_v1.yaml"
 
-#: The two local layers the cross-venue candidate universe is drawn from.
-DEFAULT_MARKETS_GLOB = "data/external/kalshi-trades/markets-*.parquet"
+#: The second venue's cleaned local layer. It is named explicitly because no declared
+#: observation path governs it; the first venue's universe carries no constant here,
+#: because it is the declared union and lives in one module.
 DEFAULT_SECOND_VENUE_GLOB = "data/external/polymarket-v1/daily_aligned_multi/*.parquet"
 
 #: The sealed protocol freeze the CLI writes when no path is given. It mirrors the
@@ -2079,8 +2080,9 @@ def _build_parser() -> argparse.ArgumentParser:
     match.add_argument(
         "--markets-glob",
         help=(
-            "first venue's market records; omit to resolve the declared layer for the "
-            "window instead of naming a file glob"
+            "read the first venue's candidates from this one path instead of the declared "
+            "union of observation paths; a path that is not a declared layer claims no "
+            "observation provenance for the records it yields"
         ),
     )
     match.add_argument(
