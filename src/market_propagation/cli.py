@@ -1520,7 +1520,8 @@ def _run_protocol_freeze(args: argparse.Namespace) -> int:
         if report["verified"]:
             _note(
                 f"the checkout matches the protocol freeze taken at {report['frozen_at']}: "
-                f"{report['files_checked']} covered file(s) checked"
+                f"{report['files_checked']} covered file(s) checked, and the manifest's own "
+                f"metadata matches its seal over {len(report['metadata_fields_bound'])} field(s)"
             )
             return EXIT_OK
         for entry in report["drifted"]:
@@ -1529,6 +1530,10 @@ def _run_protocol_freeze(args: argparse.Namespace) -> int:
             _note(f"missing: {name}")
         for name in report["expected_but_not_covered"]:
             _note(f"not covered by the freeze: {name}")
+        if not report["metadata_intact"]:
+            named = ", ".join(report["metadata_drifted"]) or "the manifest carries no seal"
+            _note(f"manifest metadata does not match its seal: {named}")
+            _note(str(report["what_metadata_drift_means"]))
         _note(str(report["what_a_drift_means"]))
         return EXIT_BLOCKED
 
@@ -1564,9 +1569,12 @@ def _run_confirmatory_progress(args: argparse.Namespace) -> int:
     """Report how far the study is from a confirmatory sample, from the artifacts held.
 
     Every prerequisite is computed rather than asserted, so the ledger cannot drift from
-    what is actually on disk. Whether an observation precedes a release is read through
-    the attestation module's own bounding instant, so a capture whose response states no
-    instant counts for nothing rather than being dated by this run's clock.
+    what is actually on disk. Whether an observation covers a release is read through the
+    attestation module's own bounding instant, so a capture whose response states no
+    instant counts for nothing rather than being dated by this run's clock, and it is
+    read against the contracts that release is measured on and the opening of its
+    declared window, so a capture for an unrelated contract or one taken inside the
+    window opens nothing.
     """
     from . import confirmatory
 
@@ -1579,13 +1587,22 @@ def _run_confirmatory_progress(args: argparse.Namespace) -> int:
         f"{ledger['captures_held']} capture(s) held under {ledger['capture_root']}, "
         f"{ledger['captures_stating_an_instant']} stating an instant; "
         f"{ledger['releases_whose_window_an_observation_precedes']} of "
-        f"{ledger['releases_total']} declared release(s) have a dated observation ahead of them"
+        f"{ledger['releases_total']} declared release(s) have their candidate contracts "
+        f"covered back to the window opening"
+    )
+    _note(
+        f"candidate population: {ledger['candidate_contracts_declared']} declared-series "
+        f"contract(s) read from {ledger['candidate_universe'].get('read_from', 'the union of observation paths')}"
     )
     for name, arm in ledger["arms"].items():
         _note(
             f"  {name} ({arm['cohort_id']}): "
             f"{arm['releases_whose_window_an_observation_precedes']} of "
-            f"{arm['declared_releases']} release(s) preceded"
+            f"{arm['declared_releases']} release(s) covered; "
+            f"{arm['candidates_with_a_covering_capture']} of "
+            f"{arm['candidate_contracts_declared']} candidate contract(s) carry a covering "
+            f"capture, {arm['releases_with_no_candidate_contract']} release(s) have no "
+            "candidate contract at all"
         )
     attestation = ledger["rule_attestation"]
     if attestation.get("read"):
@@ -2221,9 +2238,12 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Hash every declaration and estimand-defining module, record the instant the "
             "freeze is taken and the declared stopping rule, and write one sealed freeze. "
-            "Given a held freeze, re-hash the same files and report which of them moved. "
-            "The freeze records which rules were in force when a claim was registered; it "
-            "is not evidence about any contract, release or venue, and it reads no data."
+            "The seal binds the manifest's own metadata as well as the file bytes, so T0, "
+            "the stopping rule and the covered file and estimand sets are tamper-evident: "
+            "given a held freeze, verification re-hashes the files and re-checks that "
+            "metadata, naming which of them moved. The freeze records which rules were in "
+            "force when a claim was registered; it is not evidence about any contract, "
+            "release or venue, and it reads no data."
         ),
     )
     protocol.add_argument(
@@ -2240,12 +2260,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "confirmatory-progress",
         help="report how far the study is from a confirmatory sample",
         description=(
-            "For every release both declared arms state, report whether a dated rule "
-            "capture precedes it, plus the rule-attestation totals and the prerequisites "
-            "no artifact on this checkout can answer. Each state is computed from the "
-            "artifacts held rather than asserted, and a prerequisite that cannot be read "
-            "is reported unobservable with its reason rather than as met or unmet. The "
-            "ledger is not evidence about any contract or release."
+            "For every release both declared arms state, report whether a held rule "
+            "capture covers the contracts that release is measured on, reaching back past "
+            "the opening of its declared window, plus the rule-attestation totals and the "
+            "prerequisites no artifact on this checkout can answer. A capture for an "
+            "unrelated contract, or one taken inside the window, does not open the "
+            "release. Each state is computed from the artifacts held rather than asserted, "
+            "and a prerequisite that cannot be read is reported unobservable with its "
+            "reason rather than as met or unmet. The ledger is not evidence about any "
+            "contract or release."
         ),
     )
     progress.add_argument("--root", help="rule capture store root (default: the declared root)")

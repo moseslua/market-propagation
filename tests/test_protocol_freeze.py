@@ -8,9 +8,11 @@ from market_propagation.protocol_freeze import (
     DECLARATION_FILES,
     ESTIMAND_MODULES,
     FREEZE_NAME,
+    METADATA_FIELDS,
     ProtocolDriftError,
     assert_protocol_freeze,
     build_protocol_freeze,
+    metadata_digest,
     protocol_inputs,
     read_protocol_freeze,
     verify_protocol_freeze,
@@ -124,3 +126,63 @@ def test_the_cli_default_freeze_path_matches_the_package_constant():
     from market_propagation.cli import DEFAULT_FREEZE_PATH
 
     assert DEFAULT_FREEZE_PATH == FREEZE_NAME
+
+
+# The manifest's own metadata is bound separately from the file bytes, because the file
+# digest says nothing about T0, the stopping rule or the covered sets. Every test below
+# fails against a freeze that binds only the files: before that binding existed, all of
+# these manifests verified clean, so each is a regression test for a real defect.
+
+
+def test_a_backdated_t0_is_caught_and_named():
+    """A freeze whose stated instant was moved certifies a protocol it does not describe."""
+    manifest = build_protocol_freeze(frozen_at=T0)
+    manifest["frozen_at"] = "1999-01-01T00:00:00Z"
+    report = verify_protocol_freeze(manifest)
+    assert report["verified"] is False
+    assert report["metadata_intact"] is False
+    assert report["metadata_drifted"] == ["frozen_at"]
+    assert report["metadata_reason"] == "manifest_metadata_is_not_the_sealed_metadata"
+
+
+def test_a_replaced_stopping_rule_is_caught_and_named():
+    """The rule the analysis stops by is metadata, so replacing it is a caught change."""
+    manifest = build_protocol_freeze(frozen_at=T0)
+    manifest["stopping_rule"] = {"pooling": "permitted"}
+    report = verify_protocol_freeze(manifest)
+    assert report["verified"] is False
+    assert report["metadata_drifted"] == ["stopping_rule"]
+
+
+def test_a_covered_set_that_was_trimmed_after_the_freeze_is_caught_and_named():
+    """Dropping a file from the covered set changes the protocol, not merely the diff."""
+    manifest = build_protocol_freeze(frozen_at=T0)
+    manifest["declaration_files"] = manifest["declaration_files"][:-1]
+    report = verify_protocol_freeze(manifest)
+    assert report["verified"] is False
+    assert report["metadata_drifted"] == ["declaration_files"]
+
+
+def test_a_freeze_carrying_no_metadata_binding_cannot_be_shown_intact():
+    """A freeze taken before this binding existed is re-frozen, never repaired in place."""
+    manifest = build_protocol_freeze(frozen_at=T0)
+    del manifest["metadata_field_digests"]
+    report = verify_protocol_freeze(manifest)
+    assert report["verified"] is False
+    assert report["metadata_reason"] == "manifest_carries_no_metadata_digest"
+
+
+def test_drifted_metadata_stops_a_run_by_name():
+    """The assertion a cheap run takes has to name the metadata, not only the files."""
+    manifest = build_protocol_freeze(frozen_at=T0)
+    manifest["stopping_rule"] = {"pooling": "permitted"}
+    with pytest.raises(ProtocolDriftError, match="stopping_rule"):
+        assert_protocol_freeze(manifest)
+
+
+def test_the_metadata_binding_covers_every_bound_field_and_is_stable():
+    """Every bound field is digested, and re-digesting one manifest is deterministic."""
+    manifest = build_protocol_freeze(frozen_at=T0)
+    assert set(manifest["metadata_field_digests"]) == set(METADATA_FIELDS)
+    assert manifest["metadata_digest"] == metadata_digest(manifest)
+    assert verify_protocol_freeze(manifest)["metadata_intact"] is True

@@ -82,9 +82,9 @@ other row is met.
 | D3 | Point-in-time expectation source | news and network rungs (A, C) | **absent** — provider not present |
 | D4 | Cross-venue matched instrument live at a declared release instant | B | **partially satisfied** — the parser is written and reads 63 of 229 records with every component; 0 of 10 matched, because every readable pair is blocked on the first venue's unobserved components |
 | D5 | (a) Second distinct perp build | D | **(a) satisfied** — 17 builds, 43 assets |
-| D5 | (b) Observable execution-cost layer | D | **absent** — not observable from this source |
+| D5 | (b) Observable execution-cost layer | D | **absent** — not observable from this source, and the venue fee schedule is unreadable from this egress (404 at one path, 429 twice at another) |
 | D6 | Estimable declared null scenarios | calibration verdict | **satisfied** — 10 of 10 estimable, verdict `pass` |
-| D7 | More releases, and observed endpoints on declared pairs | power for any confirmatory claim | **insufficient** — 33 of 785 endpoints at h=300 s |
+| D7 | More releases, and observed endpoints on declared pairs | power for any confirmatory claim | **insufficient** — 33 of 785 endpoints at h=300 s; the declared schedule is now verified against the BLS calendar, the endpoint coverage is what remains |
 | D8 | A confirmatory sample | the two claims of interest | **not claimable** — exploratory only, degenerate |
 
 ---
@@ -235,14 +235,24 @@ or after the release, one scored against a revision, a unit disagreeing with the
 own declared statistic, an unnamed consensus, a market-implied value, an incomplete news
 vector, and altered evidence bytes. The contract is implemented and waiting on a provider.
 
-**Where to get it (carried forward).** Two halves, and only one is reachable for free from
-here. The revision half needs no credential: `fred.stlouisfed.org/graph/fredgraph.csv?id=…`
-returns observations directly, and `alfred.stlouisfed.org/series?seid=…` exposes the
-release-date and revision structure. The `vintage_date=` CSV form returned HTTP 404 from
-this egress, so automated vintage extraction is unconfirmed. The consensus half has no
-tested free source; candidates are Econoday, Trading Economics, the Investing.com calendar
-and the Philadelphia Fed SPF at quarterly frequency. A market-implied value is refused by
-the declared standard and cannot serve.
+**Where to get it — re-probed this session; the revision half has a working surface.** Two
+halves, and only one is reachable for free from here. The revision half needs no credential,
+and its surfaces were re-probed rather than carried forward:
+
+| Endpoint | Result |
+| --- | --- |
+| `fred.stlouisfed.org/graph/fredgraph.csv?id=…` | works — observations directly |
+| `alfred.stlouisfed.org/series/downloaddata?seid=CPIAUCSL` | **works** — the vintage-selection form, naming the series and its first vintage |
+| `alfred.stlouisfed.org/series?seid=…` | works — HTML carrying the revision table |
+| `alfred.stlouisfed.org/graph/fredgraph.csv?id=…&vintage_date=…` | HTTP **404**, on three spellings: bare `vintage_date`, with `cosd`/`coed`, and the plain form |
+
+So the vintage half is reachable through ALFRED's own **form** and not through a
+`vintage_date=` URL parameter. That is a concrete prerequisite rather than an open question:
+a vintage read has to submit the form's own request shape, and three parameter spellings of
+the CSV route are refused. None of this is missing a credential. The consensus half still
+has no tested free source; candidates are Econoday, Trading Economics, the Investing.com
+calendar and the Philadelphia Fed SPF at quarterly frequency. A market-implied value is
+refused by the declared standard and cannot serve.
 
 ---
 
@@ -388,6 +398,14 @@ This is the dependency **no amount of collection removes**. A second build arriv
 waiting; a cost layer does not. What is missing is the fee side, which has to come from
 venue fee schedules; the depth side is partly present in the collected cross-section.
 
+**The fee source was probed this session and is not readable from this egress.**
+`docs.kalshi.com/getting_started/fee_schedule` returned HTTP **404**, and
+`kalshi.com/docs/kalshi-fee-schedule.pdf` returned HTTP **429** on two separate attempts. A
+rate limit is not the same finding as absence, and the retry is what makes this a statement
+about this client rather than about one moment: that host refuses this egress, and the fee
+schedule has to be read through another route. It remains the one input no amount of
+collection produces, so D5(b) stays open with a named prerequisite rather than a plan.
+
 **Independence.** Study D's blocker is unrelated to D1–D4. More rule work does not help
 here, and more collection does not help there.
 
@@ -461,12 +479,28 @@ The exploratory measurement, on masked rows only, counted 47 measurable rows of 
 136 rows with both legs — which is why the fit reports both families blocked and flags
 `no_valid_panel_rows_so_absorption_is_measured_on_masked_rows_only`.
 
-**Where to get it (carried forward).** The first tranche needs no new source: the exchange
-trade archive already runs to 2026-01-29, so releases from 2025-06 through 2026-01 are
-inside the warehouse the extractor already reads, and `ingest/macro_releases.py` holds the
-expansion machinery. What they need is a release schedule to declare against; the BLS
-release calendar is the obvious authority and was **not probed**, so it is named as
-intended rather than verified. The endpoint-coverage half is not a source at all.
+**Where to get it — the schedule is verified, and the declared arm already conforms to it.**
+The first tranche needs no new source: the exchange trade archive already runs to
+2026-01-29, so releases from 2025-06 through 2026-01 are inside the warehouse the extractor
+already reads, and `ingest/macro_releases.py` holds the expansion machinery. What they need
+is a release schedule to declare against, and that authority was probed in this session
+rather than named as intended:
+
+| Endpoint | Result |
+| --- | --- |
+| `www.bls.gov/schedule/news_release/cpi.htm` | works — the CPI schedule table: reference month, release date, 08:30 AM |
+| `www.bls.gov/schedule/news_release/empsit.htm` | works — the Employment Situation schedule |
+| `www.bls.gov/schedule/news_release/bls.ics` | offered by both pages as the machine-readable calendar |
+
+Read on 2026-09-17, the two tables carry **September through November 2026**: CPI on Oct.
+14, Nov. 10 and Dec. 10, and Employment Situation on Oct. 2, Nov. 6 and Dec. 4, all stated
+as 08:30 AM America/New_York. The declared forward arm's six events **match all six of
+those instants exactly**, including the EDT/EST changeover: October's 08:30 EDT is declared
+as `12:30Z` and November's and December's 08:30 EST as `13:30Z`, which is what a naive
+fixed-offset reading would have got wrong. So this arm's schedule is verified against the
+authority that publishes it, and the extension rule has a reachable source rather than an
+intended one. Reading them confirms the declaration; it adds no release. The
+endpoint-coverage half is still not a source at all.
 
 **Coupling with D1.** Every added release brings contracts whose rule vintages are equally
 unattested, so D7 is worthless before D1.
@@ -503,7 +537,12 @@ re-test a settled question.
 | `assets.kalshi.com/contract_terms/{SERIES}.pdf` | works — full Terms and Conditions |
 | `assets.kalshi.com/regulatory/product-certifications/{SERIES}.pdf` | works — dated CFTC filing |
 | `fred.stlouisfed.org/graph/fredgraph.csv?id=…` | works — key-less CSV |
+| `www.bls.gov/schedule/news_release/cpi.htm` | works — the official CPI release schedule, with date and 08:30 AM local time |
+| `www.bls.gov/schedule/news_release/empsit.htm` | works — the official Employment Situation release schedule |
 | `alfred.stlouisfed.org/series?seid=…` | works — HTML carrying the revision table |
+| `alfred.stlouisfed.org/series/downloaddata?seid=…` | works — the vintage-selection form (the `graph/fredgraph.csv?vintage_date=` route is 404 on three spellings) |
+| `docs.kalshi.com/getting_started/fee_schedule` | HTTP **404** — no fee schedule at that path |
+| `kalshi.com/docs/kalshi-fee-schedule.pdf` | HTTP **429** on two attempts — that host refuses this egress, so the venue fee schedule is unreadable from here rather than absent |
 | `web.archive.org/cdx/search/cdx` | works — JSON enumeration (`matchType`, `collapse`) |
 | `web.archive.org/web/{ts}id_/{url}` | works — raw archived documents retrieved |
 | `www.cftc.gov/…/TradingOrganizationProducts` | loads, but rows are client-rendered: not enumerable |

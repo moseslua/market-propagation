@@ -19,6 +19,7 @@ force when a claim was registered.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 from collections.abc import Mapping
 from pathlib import Path
@@ -150,9 +151,41 @@ def freeze_hash(files: Mapping[str, str | None]) -> str:
     a file that appears later is a change rather than an addition the freeze never saw.
     """
     payload = json.dumps(dict(sorted(files.items())), separators=(",", ":"), default=str)
-    import hashlib
-
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+#: The manifest's own metadata: the fields that describe *which protocol* was sealed,
+#: as opposed to which bytes it covered.
+#:
+#: They are digested separately from ``files`` because the file digest says nothing
+#: about them. Without this binding a held manifest could have T0 backdated or its
+#: stopping rule replaced and still verify clean, since neither field feeds the hash of
+#: anything on disk: the freeze would then certify a protocol it does not describe.
+METADATA_FIELDS: tuple[str, ...] = (
+    "protocol_version",
+    "frozen_at",
+    "stopping_rule",
+    "declaration_files",
+    "estimand_modules",
+)
+
+
+def _canonical(value: Any) -> str:
+    """One metadata field as stable text, so two spellings of one value compare equal."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def metadata_field_digests(manifest: Mapping[str, Any]) -> dict[str, str]:
+    """Each bound metadata field as its own digest, so a mismatch can be named."""
+    return {
+        name: hashlib.sha256(_canonical(manifest.get(name)).encode("utf-8")).hexdigest()
+        for name in METADATA_FIELDS
+    }
+
+
+def metadata_digest(manifest: Mapping[str, Any]) -> str:
+    """The manifest's metadata as one identity, stable under key order."""
+    return hashlib.sha256(_canonical(metadata_field_digests(manifest)).encode("utf-8")).hexdigest()
 
 
 def build_protocol_freeze(
@@ -172,7 +205,7 @@ def build_protocol_freeze(
         name: (hash_file(path) if path.is_file() else None)
         for name, path in protocol_inputs(root).items()
     }
-    return {
+    manifest: dict[str, Any] = {
         "protocol_version": PROTOCOL_VERSION,
         "frozen_at": _normalize(frozen_at),
         "t0_is_the_freeze_instant": True,
@@ -186,6 +219,12 @@ def build_protocol_freeze(
         "files_absent_at_freeze": sorted(name for name, digest in files.items() if digest is None),
         "freeze_hash": freeze_hash(files),
     }
+    # The metadata binding is computed from the sealed fields above, so T0, the
+    # stopping rule and the covered file/estimand *sets* become tamper-evident
+    # alongside the file bytes.
+    manifest["metadata_field_digests"] = metadata_field_digests(manifest)
+    manifest["metadata_digest"] = metadata_digest(manifest)
+    return manifest
 
 
 def verify_protocol_freeze(
@@ -217,17 +256,46 @@ def verify_protocol_freeze(
     for name in inputs:
         if name not in declared:
             unexpected.append(name)
+
+    # The manifest's own metadata is checked against its binding, not against the
+    # current declarations: a freeze may legitimately stop by a rule this module's
+    # default does not state, so the question is whether the held metadata is the
+    # metadata that was sealed, and never whether it matches today's default.
+    frozen_fields = manifest.get("metadata_field_digests")
+    current_fields = metadata_field_digests(manifest)
+    if not isinstance(frozen_fields, Mapping):
+        metadata_drifted: list[str] = []
+        metadata_intact = False
+        metadata_reason: str | None = "manifest_carries_no_metadata_digest"
+    else:
+        metadata_drifted = sorted(
+            name for name in METADATA_FIELDS if str(frozen_fields.get(name)) != current_fields[name]
+        )
+        metadata_intact = not metadata_drifted
+        metadata_reason = (
+            None if metadata_intact else "manifest_metadata_is_not_the_sealed_metadata"
+        )
     return {
         "protocol_version": manifest.get("protocol_version"),
         "frozen_at": manifest.get("frozen_at"),
-        "verified": not drifted and not missing and not unexpected,
+        "verified": not drifted and not missing and not unexpected and metadata_intact,
         "files_checked": len(declared),
         "drifted": drifted,
         "missing": sorted(missing),
         "expected_but_not_covered": sorted(unexpected),
+        "metadata_intact": metadata_intact,
+        "metadata_reason": metadata_reason,
+        "metadata_drifted": metadata_drifted,
+        "metadata_fields_bound": list(METADATA_FIELDS),
         "freeze_hash": manifest.get("freeze_hash"),
         "matches_freeze_hash": (
             freeze_hash({str(k): v for k, v in declared.items()}) == manifest.get("freeze_hash")
+        ),
+        "what_metadata_drift_means": (
+            "the held manifest's own T0, stopping rule or covered file/estimand set is not "
+            "the one that was sealed, so it certifies a protocol it does not describe; a "
+            "freeze taken before this binding existed carries none and cannot be shown "
+            "intact, and is re-frozen under a new T0 rather than repaired in place"
         ),
         "what_a_drift_means": (
             "a covered declaration or estimand module changed after T0, so a result "
@@ -247,7 +315,9 @@ def assert_protocol_freeze(
         raise ProtocolDriftError(
             "the checkout no longer matches the protocol freeze at "
             f"{report['frozen_at']}: drifted={moved}, missing={report['missing']}, "
-            f"expected_but_not_covered={report['expected_but_not_covered']}"
+            f"expected_but_not_covered={report['expected_but_not_covered']}, "
+            f"metadata={report['metadata_reason'] or 'intact'} "
+            f"metadata_drifted={report['metadata_drifted']}"
         )
     return report
 

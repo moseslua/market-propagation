@@ -140,7 +140,7 @@ cannot support.
   states is still carried. The union identity is **asserted rather than reported**:
   counts that do not sum to the universe raise `UniverseError`. A caller that names its
   own glob reads exactly that path and claims no declared provenance.
-- **Protocol freeze** — `src/market_propagation/protocol_freeze.py`, 13 tests, and the
+- **Protocol freeze** — `src/market_propagation/protocol_freeze.py`, 19 tests, and the
   command `protocol-freeze`. It hashes the 18 declarations (the cohort, ladder, timing,
   threshold, window and evidence configurations, plus the preregistration and its
   addenda) and the 13 modules that define the estimands, records the instant the freeze
@@ -158,13 +158,17 @@ cannot support.
     configurations under `configs/studies/`, and both preregistration documents — which
     is the behaviour the check exists for. The sealed freeze is then taken over the
     final state at `2026-09-17T06:19:40Z`, 31 covered files, freeze hash
-    `c0802022518d`, and verifies clean.
-- **Confirmatory progress ledger** — `src/market_propagation/confirmatory.py`, 9 tests,
-  and the command `confirmatory-progress`. For every release both declared arms state,
-  it reports whether a held rule capture states an instant at or before it, so progress
-  toward a confirmatory sample is computed from the artifacts rather than asserted in
-  prose. The test is the attestation module's own `bounding_instant`, so a capture whose
-  response states no instant opens nothing rather than being dated by the run's clock. A
+    `c0802022518d`. That freeze predates the metadata binding recorded under Fixed, so it
+    now reports that it carries no seal and cannot be shown intact: it is re-frozen under a
+    new T0 rather than edited in place, which is what the seal's own rule requires.
+- **Confirmatory progress ledger** — `src/market_propagation/confirmatory.py`, 13 tests,
+  and the command `confirmatory-progress`. For every release both declared arms state, it
+  reports whether a held rule capture covers the contracts that release is measured on and
+  reaches back past the opening of its declared window, so progress toward a confirmatory
+  sample is computed from the artifacts rather than asserted in prose. The test is the
+  attestation module's own `bounding_instant`, so a capture whose response states no
+  instant opens nothing rather than being dated by the run's clock, and a capture for a
+  contract the release is not measured on opens nothing either. A
   prerequisite no artifact can answer is reported `unobservable` with its reason —
   also never as met, and never as unmet, because "we cannot read it" and "it is not
   there" are different facts.
@@ -233,6 +237,41 @@ cannot support.
 
 ### Fixed
 
+- **The confirmatory ledger reported a release ready on a capture for a different
+  contract.** `confirmatory._observation_prerequisite` asked only whether *any* held
+  capture states an instant at or before the release. It never looked at which contract
+  the capture was for, and never at the opening of the window it was measuring, so a
+  capture for a contract the release is not measured on — taken a year earlier — reported
+  that release's prerequisite as `met`. Reproduced before the fix: a single capture for
+  `ZZZ-UNRELATED-NOT-A-DECLARED-SERIES` turned a forward release's prerequisite `met`,
+  against `unmet` with no captures at all. It is now candidate-scoped and
+  window-covering: the capture must be for a contract this release is measured on, and its
+  interval must reach back to the window's opening — 1,800 s before the release, not the
+  release instant — because a capture taken inside that gap certifies the response half
+  and leaves the baseline half uncertified. A stated end falling before the window closes
+  does not cover either. An empty candidate population is reported `unobservable` rather
+  than `unmet`, because "no contract in the declared series covers this release instant"
+  and "a candidate exists and no capture covers it" are different facts. 4 tests pin the
+  four cases and all four fail against the old rule; the candidacy rule is the study
+  panel's own, read from the same union of observation paths, so the ledger and the panel
+  cannot drift apart.
+  - Measured after the fix on this checkout: the forward arm reads **6 of 6 releases
+    covered, with 706 of 706 candidate contracts** carrying a capture back to the window
+    opening, and the retrospective arm **0 of 10, with 0 of 785** — the correct and
+    unchanged reading, now derived from the release's own candidates rather than from any
+    capture lying around.
+- **The protocol freeze did not bind its own metadata.** Verification re-hashed the
+  covered files and nothing else, so a held manifest with a **backdated T0** or a
+  **replaced stopping rule** verified clean, and file drift was the only thing it could
+  ever detect. Reproduced before the fix: a manifest whose `frozen_at` was moved to
+  `1999-01-01` and one whose `stopping_rule` was replaced both returned
+  `verified: True`. The seal now digests the manifest's own `protocol_version`,
+  `frozen_at`, `stopping_rule`, `declaration_files` and `estimand_modules`, and
+  verification names which of them moved. A manifest carrying no metadata seal cannot be
+  shown intact and is re-frozen under a new T0 rather than repaired in place — the freeze
+  taken earlier this session at `2026-09-17T06:19:40Z` carries none and now reports
+  exactly that, while still naming the two files the D4 work legitimately moved. 6 tests
+  pin it, each failing against the old implementation.
 - **Two declared nulls produced no comparison row at all.** The calibration's verdict
   was `inconclusive` because `spread_only` and `resolution_pause` blocked **200 of 200
   repetitions**, so the family-wise simultaneous bound was not certifiable for the
@@ -278,6 +317,24 @@ cannot support.
 
 ### Measurements recorded
 
+- **The declared forward arm's six release instants are verified against the authority
+  that publishes them.** The dependency ledger recorded the BLS release calendar as *"the
+  obvious authority and was **not probed**, so it is named as intended rather than
+  verified"*. Probed on 2026-09-17, `www.bls.gov/schedule/news_release/cpi.htm` and
+  `.../empsit.htm` both answer and carry September through November 2026. The declared arm
+  matches **all six** instants exactly, including the EDT/EST changeover: October's 08:30
+  EDT is declared `12:30Z` and November's and December's 08:30 EST as `13:30Z`, which a
+  fixed-offset reading would have got wrong. Reading them confirms the declaration; it adds
+  no release, attests no contract, and moves no endpoint count.
+- **Two acquisition routes probed, and recorded as they answered.**
+  `alfred.stlouisfed.org/series/downloaddata?seid=…` works and is ALFRED's own
+  vintage-selection surface, while `graph/fredgraph.csv?vintage_date=` is HTTP **404** on
+  three spellings — so D3's revision half has a working surface and a concrete prerequisite
+  (the form's own request shape) rather than an open question. The venue fee schedule D5(b)
+  needs is **not readable from this egress**:
+  `docs.kalshi.com/getting_started/fee_schedule` is HTTP **404**, and
+  `kalshi.com/docs/kalshi-fee-schedule.pdf` returned HTTP **429** on two separate attempts.
+  The retry is what makes that a statement about this client rather than about one moment.
 - **The second venue's records are now readable — and no pair is a match.** Of the 229
   declared candidates, **63 read a predicate carrying every component** and **166 refuse
   by name**: 119 for a settlement subject the venue's text does not state, 19 for a meeting
