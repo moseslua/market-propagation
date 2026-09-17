@@ -78,7 +78,7 @@ other row is met.
 | Id | Dependency | Blocks | State |
 | --- | --- | --- | --- |
 | D1 | Per-contract rule-vintage record | A, C (and B once matched) | **absent** — 0 of 785 |
-| D2 | Observation overlap: universe observable before its own window | D1 for the studied cohort | **not satisfied** — capture route covers live contracts only |
+| D2 | Observation overlap: universe observable before its own window | D1 for the studied cohort | **not satisfied for the retrospective cohort** — the union is wired, so the remaining reason is the ordering: a capture cannot precede a 2025 window |
 | D3 | Point-in-time expectation source | news and network rungs (A, C) | **absent** — provider not present |
 | D4 | Cross-venue matched instrument live at a declared release instant | B | **absent** — 0 of 10 |
 | D5 | (a) Second distinct perp build | D | **(a) satisfied** — 17 builds, 43 assets |
