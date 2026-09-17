@@ -877,6 +877,48 @@ def test_null_size_survives_a_write_and_read(tmp_path: pathlib.Path) -> None:
     assert by_venue["kalshi"].provenance.record_id == f"{SHARD_HASH}:0"
 
 
+def test_load_trades_keeps_only_the_named_contracts(tmp_path: pathlib.Path) -> None:
+    """A declared contract filter narrows the read without thinning a kept contract.
+
+    The panel indexes trades by contract and reads only the keys its own grid names,
+    so a caller that has declared those contracts passes them here instead of building
+    a record for every row of a layer-wide extraction. Two rows of the kept contract
+    are what makes filtering and thinning tell apart: a filter that kept one row per
+    contract would pass a single-row expectation and lose the second trade.
+    """
+
+    def kalshi(ticker: str, position: int):
+        return kalshi_trade_from_row(
+            {
+                "trade_id": f"t{position}",
+                "ticker": ticker,
+                "count": 1,
+                "yes_price": 30,
+                "no_price": 70,
+                "taker_side": "yes",
+                "created_time": in_window(position),
+            },
+            shard_hash=SHARD_HASH,
+            shard_relative_path="trades-0000.parquet",
+            row_position=position,
+        )
+
+    path = tmp_path / "historical_trades.parquet"
+    write_trades(
+        [kalshi("KXFED-25JAN", 0), kalshi("KXCPI-25JAN", 1), kalshi("KXFED-25JAN", 2)], path
+    )
+
+    kept = load_trades(path, contracts=["KXFED-25JAN"])
+    assert {trade.contract_id for trade in kept} == {"KXFED-25JAN"}
+    assert len(kept) == 2
+
+    # No filter is the behaviour every existing caller relies on: every row comes back.
+    assert len(load_trades(path)) == 3
+
+    # A contract the dataset does not hold selects nothing, rather than everything.
+    assert load_trades(path, contracts=["KXNOPE-25JAN"]) == ()
+
+
 def test_flagged_record_survives_a_round_trip(tmp_path: pathlib.Path) -> None:
     trade = kalshi_trade_from_row(
         {

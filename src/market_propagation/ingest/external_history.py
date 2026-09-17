@@ -747,7 +747,9 @@ def write_trades(trades: Iterable[HistoricalTrade], path: str | Path) -> Dataset
     return write_parquet(list(trades), path, table="historical_trades")
 
 
-def load_trades(path: str | Path) -> tuple[HistoricalTrade, ...]:
+def load_trades(
+    path: str | Path, *, contracts: Iterable[str] | None = None
+) -> tuple[HistoricalTrade, ...]:
     """Read a sealed ``historical_trades`` dataset back into records.
 
     The inverse of :func:`write_trades`, kept here rather than reconstructed by
@@ -756,8 +758,21 @@ def load_trades(path: str | Path) -> tuple[HistoricalTrade, ...]:
     that wrote the bytes. Reading goes through
     :func:`~market_propagation.storage.read_parquet`, so the content hash and the
     declared schema are verified before any row is interpreted.
+
+    ``contracts`` keeps only those contract ids, and does so before any row is
+    projected into a record. The dataset is still read and verified whole, because
+    the content hash addresses the file's bytes and not a selection of them; what
+    the filter avoids is building a record for every row of a layer-wide
+    extraction when the caller has already declared which contracts it can read.
+    A caller with no such declaration passes nothing and gets every row, which is
+    the behaviour every existing caller already depends on.
     """
     frame = read_parquet(path, table="historical_trades")
+    if contracts is not None:
+        wanted = {str(contract) for contract in contracts}
+        # A vectorised membership test over the column, so the filter costs one pass
+        # over an array rather than one Python object per row of the whole layer.
+        frame = frame[frame["contract_id"].isin(wanted)]
     return tuple(_trade_from_sealed_row(row) for row in frame.to_dict(orient="records"))
 
 

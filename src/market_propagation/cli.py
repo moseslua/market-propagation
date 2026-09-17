@@ -33,7 +33,7 @@ import json
 import math
 import pathlib
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import replace
 from decimal import Decimal
 from typing import Any, NoReturn
@@ -247,6 +247,25 @@ def _candidate_grid(path: str) -> dict[str, list[tuple[str, str]]]:
             pairs.append((venue, contract_id))
         grid[event_id] = pairs
     return grid
+
+
+def _declared_contracts(
+    candidates: Mapping[str, Iterable[tuple[str, str]]] | None,
+) -> set[str] | None:
+    """The contract ids a declared candidate grid names, or ``None`` when it names none.
+
+    Only the id is collected rather than the ``(venue, contract_id)`` pair. The panel
+    files trades under that pair, so a row carrying the same id at another venue lands
+    on a key the grid never reads, while narrowing the filter to pairs would put a
+    second column into the predicate for no change in what the panel can read.
+
+    ``None`` means no grid was declared, and the reader must then return every row:
+    without a grid the panel's universe *is* the set of contracts that traded, so
+    narrowing the read would redesign the denominator instead of speeding it up.
+    """
+    if not candidates:
+        return None
+    return {str(contract_id) for pairs in candidates.values() for _venue, contract_id in pairs}
 
 
 def _dataset_record(reference: Any) -> dict[str, Any]:
@@ -711,7 +730,7 @@ def _run_build_trade_panel(args: argparse.Namespace) -> int:
     from .ingest import external_history
 
     candidates = args.candidate_grid
-    trades = external_history.load_trades(args.trades)
+    trades = external_history.load_trades(args.trades, contracts=_declared_contracts(candidates))
     panel = trade_panel.build_trade_panel(
         trades, events, settings=settings, clock_mode=clock_mode, candidates=candidates
     )
