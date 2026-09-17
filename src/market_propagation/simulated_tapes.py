@@ -48,7 +48,7 @@ from typing import Any
 import pandas as pd
 
 from .domain import Availability, Clock, HistoricalTrade, Provenance
-from .neighbors import ContractPredicate
+from .neighbors import ORIGIN_SIMULATED, ContractPredicate
 from .simulation import (
     _CONTROL_VENUE,
     _FAST_VENUE,
@@ -335,6 +335,9 @@ def _predicate(
         open_time=decision - margin,
         close_time=decision + margin,
         rule_hash=_rule_hash(rate_definition),
+        # A simulated contract is not observed through either real path, and saying so
+        # keeps the calibration's provenance from reading as an archive observation.
+        observation_origin=ORIGIN_SIMULATED,
         rule_in_force_from=window_floor,
         rule_in_force_to=None,
         rule_verified_by=SYNTHETIC_RULE_METHOD,

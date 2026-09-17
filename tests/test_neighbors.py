@@ -45,6 +45,9 @@ from market_propagation.domain import UTC
 from market_propagation.neighbors import (
     GRAPH_VERSION,
     MATCH_FIELDS,
+    ORIGIN_ARCHIVED_AND_LIVE,
+    ORIGIN_ARCHIVED_ONLY,
+    ORIGIN_LIVE_ONLY,
     REASON_CALENDAR_DATE_HOLDS_NO_CONTRACT,
     REASON_DONOR_NOT_LIVE_THROUGH_WINDOW,
     REASON_DONOR_NOT_OPEN,
@@ -59,6 +62,7 @@ from market_propagation.neighbors import (
     NeighborGraph,
     build_neighbor_graph,
     graph_digest,
+    observation_origin,
 )
 
 JAN = dt.date(2025, 1, 29)
@@ -154,6 +158,7 @@ def contract(
     rule_in_force_from: dt.datetime | None = IN_FORCE_FROM,
     rule_in_force_to: dt.datetime | None = None,
     rule_verified_by: str | None = VERIFIED_BY,
+    observation_origin: str = ORIGIN_ARCHIVED_ONLY,
 ) -> ContractPredicate:
     """One candidate contract on one of the fixtured listing calendars.
 
@@ -178,6 +183,7 @@ def contract(
         open_time=listed if open_time is None else open_time,
         close_time=closed if close_time is None else close_time,
         rule_hash=rule_hash,
+        observation_origin=observation_origin,
         rule_in_force_from=rule_in_force_from,
         rule_in_force_to=rule_in_force_to,
         rule_verified_by=rule_verified_by,
@@ -193,6 +199,40 @@ def matched_pair(*, origin: dt.datetime = ORIGIN) -> NeighborGraph:
         ],
         at=origin,
     )
+
+
+def test_observation_origin_names_the_paths_a_contract_was_seen_on() -> None:
+    """The three observed states stay distinguishable, and an unseen contract is refused.
+
+    Provenance is what lets a consumer condition on how a contract was observed without
+    the population being redefined afterwards, so the states must not collapse into a
+    single admissible bit, and a contract neither path observed must not borrow a real
+    path. None of this narrows eligibility: archived-only and live-only contracts are
+    both admissible, because the population is their union rather than either alone.
+    """
+    assert observation_origin(seen_archive=True, seen_live=False) == ORIGIN_ARCHIVED_ONLY
+    assert observation_origin(seen_archive=False, seen_live=True) == ORIGIN_LIVE_ONLY
+    assert observation_origin(seen_archive=True, seen_live=True) == ORIGIN_ARCHIVED_AND_LIVE
+    with pytest.raises(ValueError, match="neither"):
+        observation_origin(seen_archive=False, seen_live=False)
+
+    for origin in (ORIGIN_ARCHIVED_ONLY, ORIGIN_LIVE_ONLY, ORIGIN_ARCHIVED_AND_LIVE):
+        assert contract("C", JAN, observation_origin=origin).observation_origin == origin
+    with pytest.raises(ValueError, match="observation_origin"):
+        contract("C", JAN, observation_origin="not_an_observation_path")
+
+    # Provenance is evidence about the contract, not part of its payoff: two contracts
+    # that state one predicate match whatever paths observed them, so provenance cannot
+    # silently become a membership or matching rule.
+    assert MATCH_FIELDS == ("rate_definition", "threshold", "inequality", "yes_axis", "orientation")
+    graph = graph_over_calendar(
+        [
+            contract("DONOR", JAN, observation_origin=ORIGIN_ARCHIVED_ONLY),
+            contract("RECEIVER", MAR, observation_origin=ORIGIN_LIVE_ONLY),
+        ],
+        at=ORIGIN,
+    )
+    assert graph.donors_for("RECEIVER") == ("DONOR",)
 
 
 def test_matched_pair_produces_exactly_one_edge_with_the_correct_direction() -> None:

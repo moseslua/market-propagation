@@ -24,7 +24,9 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import glob
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +43,15 @@ from market_propagation.ingest.policy_predicates import (
     decision_date_for,
     parse_predicate,
 )
-from market_propagation.neighbors import ContractPredicate, build_neighbor_graph, graph_digest
+from market_propagation.neighbors import (
+    ORIGIN_ARCHIVED_AND_LIVE,
+    ORIGIN_ARCHIVED_ONLY,
+    ORIGIN_LIVE_ONLY,
+    ContractPredicate,
+    build_neighbor_graph,
+    graph_digest,
+    observation_origin,
+)
 from market_propagation.storage import hash_file, read_parquet, write_parquet
 
 GRAPH_CONFIG = "configs/neighbor_graph_v2.yaml"
@@ -49,7 +59,37 @@ COHORT_CONFIG = "configs/cohort_v2.yaml"
 STUDY_CONFIG = "configs/study_v2.yaml"
 PIPELINE_CONFIG = "configs/external_history_v1.yaml"
 MARKETS_GLOB = "data/external/kalshi-trades/markets-*.parquet"
+OWN_MARKETS_GLOB = "data/external/kalshi-own/markets/markets-*.parquet"
 KALSHI_VENUE = "kalshi"
+
+#: The layer this repository captures prospectively from the venue's own listing.
+LIVE_LAYER_NAME = "kalshi_own_markets"
+
+#: The third-party archive layer.
+ARCHIVE_LAYER_NAME = "kalshi_markets"
+
+#: The markets layers the contract universe is drawn from. The universe is their
+#: union, and the order resolves a field disagreement: this repository's own capture
+#: is read first because ``configs/external_history_v1.yaml`` already names
+#: ``kalshi_own_markets`` as the two-source authority for a window it covers — it is
+#: the listing as the venue served it, read forward, rather than a later vendor
+#: transcription of the same listing.
+MARKET_LAYERS: tuple[tuple[str, str], ...] = (
+    (LIVE_LAYER_NAME, OWN_MARKETS_GLOB),
+    (ARCHIVE_LAYER_NAME, MARKETS_GLOB),
+)
+
+#: The columns the predicate is read from, projected identically from every layer.
+CANDIDATE_COLUMNS: tuple[str, ...] = (
+    "ticker",
+    "event_ticker",
+    "yes_sub_title",
+    "no_sub_title",
+    "title",
+    "status",
+    "open_time",
+    "close_time",
+)
 
 
 def _load(path: str) -> dict[str, Any]:
@@ -114,8 +154,15 @@ def rule_records(graph_config: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return records
 
 
-def candidate_rows(policy_series: tuple[str, ...]) -> list[dict[str, Any]]:
-    """Every declared-series contract with the text its predicate is read from."""
+def _layer_contracts(pattern: str, policy_series: tuple[str, ...]) -> list[dict[str, Any]]:
+    """Declared-series contract rows from one markets layer.
+
+    A layer holding no shard yields no rows rather than an error: a checkout with no
+    capture yet still has an archive to read, and which layers were present is
+    reported beside the universe instead of being inferred from an empty one.
+    """
+    if not glob.glob(pattern):
+        return []
     con = duckdb.connect()
     con.execute("SET TimeZone='UTC'")
     placeholders = ", ".join("?" for _ in policy_series)
@@ -123,25 +170,92 @@ def candidate_rows(policy_series: tuple[str, ...]) -> list[dict[str, Any]]:
         f"""
         SELECT ticker, event_ticker, yes_sub_title, no_sub_title, title, status,
                open_time::VARCHAR AS open_time, close_time::VARCHAR AS close_time
-        FROM read_parquet('{MARKETS_GLOB}')
+        FROM read_parquet('{pattern}')
         WHERE regexp_extract(ticker, '^[A-Z]+') IN ({placeholders})
         """,
         list(policy_series),
     ).fetchall()
     con.close()
-    return [
-        {
-            "ticker": row[0],
-            "event_ticker": row[1],
-            "yes_sub_title": row[2],
-            "no_sub_title": row[3],
-            "title": row[4],
-            "status": row[5],
-            "open_time": row[6],
-            "close_time": row[7],
-        }
-        for row in rows
-    ]
+    return [dict(zip(CANDIDATE_COLUMNS, row, strict=True)) for row in rows]
+
+
+def candidate_rows(
+    policy_series: tuple[str, ...],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Every declared-series contract, observed through either admissible path.
+
+    The universe is the union of the archived layer and this repository's own
+    prospective capture, never their intersection. The archive previously defined
+    existence by itself, which quietly made presence in a vendor transcription into a
+    study admission rule; here it is one observation mechanism among two, so a contract
+    the venue listed but the archive omits is still a candidate.
+
+    A contract both layers hold is one contract with two observations rather than two
+    contracts, and its fields are taken from the first layer in :data:`MARKET_LAYERS`
+    that states a non-null value, so a disagreement is resolved by the declared order
+    instead of by whichever shard happened to be read last.
+    """
+    layers = {name: _layer_contracts(pattern, policy_series) for name, pattern in MARKET_LAYERS}
+    held = {name: {str(row["ticker"]) for row in rows} for name, rows in layers.items()}
+
+    merged: dict[str, dict[str, Any]] = {}
+    for name, _ in MARKET_LAYERS:
+        for row in layers[name]:
+            ticker = str(row["ticker"])
+            current = merged.get(ticker)
+            if current is None:
+                merged[ticker] = dict(row)
+                continue
+            for field, value in row.items():
+                if value is not None and current.get(field) is None:
+                    current[field] = value
+
+    markets: list[dict[str, Any]] = []
+    counts: Counter[str] = Counter()
+    for ticker in sorted(merged):
+        row = merged[ticker]
+        seen_archive = ticker in held[ARCHIVE_LAYER_NAME]
+        seen_live = ticker in held[LIVE_LAYER_NAME]
+        row["seen_archive"] = seen_archive
+        row["seen_live"] = seen_live
+        counts[observation_origin(seen_archive=seen_archive, seen_live=seen_live)] += 1
+        markets.append(row)
+
+    diagnostics: dict[str, Any] = {
+        "layers": [name for name, _ in MARKET_LAYERS],
+        "layers_present": sorted(name for name, rows in layers.items() if rows),
+        "layers_empty": sorted(name for name, rows in layers.items() if not rows),
+        "archived_contracts": len(held[ARCHIVE_LAYER_NAME]),
+        "live_contracts": len(held[LIVE_LAYER_NAME]),
+        "archived_and_live_contracts": len(held[ARCHIVE_LAYER_NAME] & held[LIVE_LAYER_NAME]),
+        "union_contracts": len(merged),
+        "provenance_counts": {
+            ORIGIN_ARCHIVED_ONLY: counts[ORIGIN_ARCHIVED_ONLY],
+            ORIGIN_LIVE_ONLY: counts[ORIGIN_LIVE_ONLY],
+            ORIGIN_ARCHIVED_AND_LIVE: counts[ORIGIN_ARCHIVED_AND_LIVE],
+        },
+        "population_note": (
+            "the union of both observation paths: archive presence is an observation "
+            "mechanism and never a membership rule"
+        ),
+    }
+    # The union identity is asserted rather than reported, because provenance counts
+    # that do not sum to the universe would mean a contract's observation paths and its
+    # membership disagree, and every downstream count would inherit that.
+    if sum(diagnostics["provenance_counts"].values()) != diagnostics["union_contracts"]:
+        raise ValueError(
+            "provenance counts do not sum to the union size, so a contract's observation "
+            f"paths and its membership disagree: {diagnostics['provenance_counts']} against "
+            f"{diagnostics['union_contracts']}"
+        )
+    if diagnostics["archived_and_live_contracts"] > min(
+        diagnostics["archived_contracts"], diagnostics["live_contracts"]
+    ):
+        raise ValueError(
+            "the archived-and-live count exceeds one of the layers' own counts, so the "
+            "overlap is not a subset of both"
+        )
+    return markets, diagnostics
 
 
 def predicates(
@@ -178,6 +292,10 @@ def predicates(
             open_time=_instant(market["open_time"]),
             close_time=_instant(market["close_time"]),
             rule_hash=(str(record["rule_hash"]) if record else None),
+            observation_origin=observation_origin(
+                seen_archive=bool(market.get("seen_archive")),
+                seen_live=bool(market.get("seen_live")),
+            ),
             rule_in_force_from=(_instant(record.get("in_force_from")) if record else None),
             rule_in_force_to=(_instant(record.get("in_force_to")) if record else None),
             rule_verified_by=(str(record["verified_by"]) if record else None),
@@ -225,8 +343,22 @@ def main() -> int:
         for event_id, group in panel.groupby("event_id", sort=True)
     }
 
-    markets = candidate_rows(policy_series)
+    markets, population = candidate_rows(policy_series)
     known, refused = predicates(markets, months=months, rules=rules)
+    # Provenance among the contracts that passed the predicate parse, which is the set
+    # the graph is actually built over: the universe diagnostic counts candidates, and
+    # this counts the admitted ones, so a live-only contract that parses is visible as
+    # admitted rather than merely present.
+    admitted_by_origin: Counter[str] = Counter(
+        predicate.observation_origin for predicate in known.values()
+    )
+    population["admitted_by_origin"] = {
+        ORIGIN_ARCHIVED_ONLY: admitted_by_origin[ORIGIN_ARCHIVED_ONLY],
+        ORIGIN_LIVE_ONLY: admitted_by_origin[ORIGIN_LIVE_ONLY],
+        ORIGIN_ARCHIVED_AND_LIVE: admitted_by_origin[ORIGIN_ARCHIVED_AND_LIVE],
+    }
+    population["admitted_contracts"] = len(known)
+    population["predicate_refused_contracts"] = len(refused)
 
     trades_path = out_dir / "historical_trades.parquet"
     trade_records = load_trades(trades_path) if trades_path.exists() else []
@@ -287,6 +419,7 @@ def main() -> int:
         json.dumps(
             {
                 "calendar": [date.isoformat() for date in calendar],
+                "population": population,
                 "predicate_refused": refused,
                 "by_release": decisions,
             },
