@@ -11,6 +11,12 @@ data/
 .DS_Store
 .omp
 
+# Local orchestration and index state.
+.omx/
+.omx-state-locks/
+.omx-state-locks.identity.json
+.codegraph
+
 # Runtime output. `configs/scheduled-reports.cron` writes both of these: it appends job
 # transcripts to `logs/` and generated JSON reports to `reports/generated/`. Neither is
 # a report source. The committed report sources stay directly under `reports/`.

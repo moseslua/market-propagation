@@ -8,6 +8,34 @@ evidence about any contract, release or venue.
 
 ## Acquisition follow-through
 
+The subsequent [research execution](future_research_directions.md#research-execution-results)
+fetched current primary text for all 107 historical contracts, retained all 785
+pairs, parsed eight dated FactSet candidates and measured the supported diagnostics.
+That initial pass admitted no historical interval or point-in-time consensus. Its
+four CPI candidates target the wrong statistic. Archive availability requests
+returned 429 and the ALFRED download form returned 500. These are route-specific results, not proofs
+that the underlying data do not exist.
+
+The earlier perp sign-stability interpretation is withdrawn. Its producer chooses
+the long/short orientation anew at every build, so nonnegative spreads are a
+construction property. The fixed Bybit-minus-Binance BTCUSDT series has 11 positive
+and 11 negative observations over 22 builds, with five observed sign reversals.
+The new replay command and source references are in the linked research report.
+
+The subsequent alternate reader recovered Binance's published base USDT fee
+table. Together with the saved Bybit table, it supports a fully specified
+conditional base-fee calculation. At a 10,000 USDT target the frozen-book example
+is 21.0230784650 USDT. The Binance artifact is explicitly a third-party rendered
+copy. Account terms, effective intervals and realized execution remain unverified.
+The later Wayback recovery validates all five payroll forecasts and the January,
+February and March CPI forecasts for descriptive first-print surprises. All ten
+releases now have pre-release monthly forecast quotations. April and May CPI
+still lack verified seasonal adjustment and remain unscored. The employment
+expectation vector also lacks pre-release unemployment-rate and average-hourly-
+earnings month-on-month expectations for all five releases. All ten releases remain in
+`.audit/research-evidence-20260917/continuation-6/forecast-replay/report.json`.
+This closes part of D3b without wiring a source into the frozen study.
+
 The persistent local collector completed a real cycle: 163 rule captures and
 attested contracts, 9,784 Polymarket metadata records, and 163 market rows with
 61,013 trades. Receipts and raw-byte manifests are under
@@ -20,8 +48,8 @@ of acquisition and rule-coverage prerequisites, not a confirmatory sample.
 | --- | --- | --- |
 | D1/D2 historical | Queue retains 785 pairs, 107 contracts and 2,355 explicit field/interval gaps; current primary market, event, series and linked-document responses archived | 0 historical windows attested; exact discovered market/event URL archive probes returned HTTP 503 |
 | D3a | All 10 original BLS releases replay from verified raw bytes; five report revisions | ALFRED/FRED direct retrieval timed out; the alternate reader returned the form explanation, not a vintage export |
-| D3b | Public pages from Trading Economics, Investing.com, Econoday and Philadelphia Fed archived | No historical monthly consensus with demonstrable pre-release publication validated in this bounded probe |
-| D5(b) | Official Bybit fee tiers parsed from saved HTML; BTCUSDT depth and contract specifications acquired for Bybit and Binance | Binance fee pages were empty directly and verification pages through the alternate reader; account tier, region, effective intervals and future execution remain unverified |
+| D3b | Five payroll and three CPI forecasts validated; all ten headline monthly quotations recovered from pre-release archives | April and May CPI seasonal bases unverified; unemployment-rate and earnings expectations absent; frozen study source remains unwired |
+| D5(b) | Bybit fee tiers parsed from saved HTML; Binance base USDT fee tiers parsed from a labelled public-reader copy; BTCUSDT books and specifications held | Origin Binance response bytes, account applicability, effective intervals and future execution remain unverified |
 
 Source probes and their hashes are in `.audit/evidence-recovery/`,
 `.audit/evidence-acquisition/sources-20260917/`, `.audit/expectation-recovery/`, and
@@ -105,10 +133,10 @@ other row is met.
 | --- | --- | --- | --- |
 | D1 | Per-contract rule-vintage record | A, C (and B once matched) | **absent** — 0 of 785 |
 | D2 | Observation overlap: universe observable before its own window | D1 for the studied cohort | **not satisfied for the retrospective cohort** — the union is wired, so the remaining reason is the ordering: a capture cannot precede a 2025 window |
-| D3 | Point-in-time expectation source | news and network rungs (A, C) | **absent** — provider not present |
+| D3 | Point-in-time expectation source | news and network rungs (A, C) | Frozen source unwired; eight headline/payroll records validated separately; full declared vector incomplete |
 | D4 | Cross-venue matched instrument live at a declared release instant | B | **partially satisfied** — the parser is written and reads 63 of 229 records with every component; 0 of 10 matched, because every readable pair is blocked on the first venue's unobserved components |
 | D5 | (a) Second distinct perp build | D | **(a) satisfied** — 17 builds, 43 assets |
-| D5 | (b) Observable execution-cost layer | D | **partial** — Bybit base fees and both venue books/specifications acquired; Binance fees and execution assumptions remain unverified |
+| D5 | (b) Observable execution-cost layer | D | **partial** — both published base fee tables and both venue books/specifications acquired; account applicability and execution remain unverified |
 | D6 | Estimable declared null scenarios | calibration verdict | **satisfied** — 10 of 10 estimable, verdict `pass` |
 | D7 | More releases, and observed endpoints on declared pairs | power for any confirmatory claim | **insufficient** — 33 of 785 endpoints at h=300 s; the declared schedule is now verified against the BLS calendar, the endpoint coverage is what remains |
 | D8 | A confirmatory sample | the two claims of interest | **not claimable** — exploratory only, degenerate |
@@ -242,7 +270,7 @@ graph reads and by where the cadence is run.
 
 ## D3. A point-in-time expectation source covering the declared news vector
 
-**Required.** For each release, a forecast published **at or before** the release instant,
+**Required.** For each release, a forecast published **strictly before** the release instant,
 scored against that release's own declared statistic, in the declared units, from a named
 consensus, not market-implied. The declared vector is `cpi_headline_sa_mom_pct` and
 `payrolls_change_thousands`.
@@ -250,10 +278,12 @@ consensus, not market-implied. The declared vector is `cpi_headline_sa_mom_pct` 
 **Why it is required.** Without a news baseline, a common shock that moved two contracts
 is indistinguishable from transmission between them. Structural, not a matter of degree.
 
-**Measured state (fresh).** No expectation source exists on this checkout. The report
-records `expectation_verified: false` with the reason that no expectation column exists in
-the panel — and that a missing expectation is never a zero-valued surprise.
-`load_expectations` raises `expectation_source_is_absent`, and the `news` and `network`
+**Frozen study state.** Its configured expectation source remains null and its panel
+has no expectation column. The later separate archive replay validates all five
+payroll forecasts plus January, February and March CPI, and calculates first-print surprises.
+April and May CPI seasonal bases remain unresolved. Their archived values are
+not scored. A missing expectation is never a zero-valued surprise. The frozen run still reports
+`expectation_source_is_absent`, and the `news` and `network`
 rungs are blocked with the declared columns named (`delayed_shock`, `neighbor_lag`,
 `neighbor_lag_control`, `shock`). The propagation rung is flagged
 `propagation_rung_blocked_inputs_absent`.
@@ -261,11 +291,10 @@ rungs are blocked with the declared columns named (`delayed_shock`, `neighbor_la
 `ingest/expectations.py` already refuses, each with its own code: a forecast published at
 or after the release, one scored against a revision, a unit disagreeing with the release's
 own declared statistic, an unnamed consensus, a market-implied value, an incomplete news
-vector, and altered evidence bytes. The contract is implemented and waiting on a provider.
+vector, and altered evidence bytes. The contract is unchanged by the archive replay.
 
-**Where to get it — re-probed this session; the revision half has a working surface.** Two
-halves, and only one is reachable for free from here. The revision half needs no credential,
-and its surfaces were re-probed rather than carried forward:
+**Earlier revision-source probes.** These results predate the archive consensus
+recovery above. They distinguish a usable form from an acquired vintage export:
 
 | Endpoint | Result |
 | --- | --- |
@@ -277,10 +306,11 @@ and its surfaces were re-probed rather than carried forward:
 So the vintage half is reachable through ALFRED's own **form** and not through a
 `vintage_date=` URL parameter. That is a concrete prerequisite rather than an open question:
 a vintage read has to submit the form's own request shape, and three parameter spellings of
-the CSV route are refused. None of this is missing a credential. The consensus half still
-has no tested free source; candidates are Econoday, Trading Economics, the Investing.com
-calendar and the Philadelphia Fed SPF at quarterly frequency. A market-implied value is
-refused by the declared standard and cannot serve.
+the CSV route are refused. The subsequent form downloads returned HTTP 500 and
+supplied no vintage export. Original BLS releases remain the verified revision
+source. Public archived news now supplies five payroll and three CPI forecasts.
+The two remaining CPI releases need verified seasonal definitions. Quarterly SPF forecasts and
+market-implied values cannot substitute for those records.
 
 ---
 
@@ -386,20 +416,22 @@ observation.
 | Assets with at least one admissible spread | **43 of 43** |
 | Funding differentials formed | **207,543** |
 | Cross-venue basis pairs formed | **202,434** |
-| Sign-stable across observations (sampled) | **true** |
+| Sign-stable across observations (legacy field) | **not informative**; each pair is reoriented to a nonnegative spread |
 
-Persistence is now a measurable quantity rather than an unavailable one. For example:
+Repeated cross-sections are now available. The carried-forward values below pool
+quoted spreads across pairs. Their signs follow the cheaper-long orientation and
+do not establish persistence of a fixed direction.
 
-| Asset | Builds held | Admissible spreads | Median spread (APR) | Sign stable |
+| Asset | Builds held | Admissible spreads | Median spread (APR) | Legacy sign field |
 | --- | --- | --- | --- | --- |
 | `crypto/ADA` | 8 | 4,488 | 0.1489 | true |
 | `crypto/AIN` | 8 | 224 | 1.9042 | true |
 | `crypto/AKE` | 8 | 624 | 0.27015 | true |
 
-**What this does and does not license.** Gross quoted spreads persist with a stable sign
-across builds for the assets held. That is a statement about **quoted** spreads and venue
-price levels. It is not a net return, not a cost estimate, not slippage, and not a
-capacity figure — see D5(b).
+**What this licenses.** The stored cross-sections permit comparisons of quoted
+spreads and venue price levels. The legacy sign field does not establish persistence
+of a fixed trade direction. The fixed BTCUSDT comparison above changes sign. None
+of these observations establishes net return, execution cost, slippage or capacity.
 
 ## D5(b). An observable execution-cost layer — **partially observed**
 
@@ -426,11 +458,14 @@ PerpDexList collection alone cannot remove this refusal. The cost inputs must co
 from the relevant perpetual-futures venues; the previously cited Kalshi fee paths
 were unrelated to this dependency.
 
-The follow-through acquired Bybit's official base fee table and both venues'
+The follow-through acquired Bybit's official base fee table, a labelled reader
+copy of Binance's base USDT fee table, and both venues'
 BTCUSDT depth/specifications. `replay_perp_cost_evidence.py` parses the saved table,
 checks contract and lot compatibility, and replays a matched 0.131 BTC quantity
 against each saved book. The known component is 11.0243659150 USDT, including
-10.9981659150 USDT of assumed Bybit VIP 0 taker fees, plus an unknown Binance fee.
+10.9981659150 USDT of assumed Bybit VIP 0 taker fees. The recovered regular-user
+Binance base taker rate adds 9.998712550 USDT, giving a conditional total of
+21.0230784650 USDT. The earlier artifacts retain their unknown-Binance-fee state.
 Books were fetched sequentially; exits, realized fills and account-specific rates
 were not observed. This is conditional frozen-book arithmetic, not a future-cost
 bound, executable opportunity, net return, or capacity estimate.
